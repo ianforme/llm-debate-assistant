@@ -33,10 +33,11 @@ Note: to run the llms, set `is_demo=False` in `config.py`. Otherwise the demo UI
 
 ## Run the App
 
-To generate the debate content:
+To generate the debate content, you can either run the script:
 ```bash
 python -m examples.run_debate
 ```
+Or run the cells in the Jupyter notebook: [`notebook/scratchpad.ipynb`](notebook/scratchpad.ipynb).
 
 To view the debate in the UI:
 ```bash
