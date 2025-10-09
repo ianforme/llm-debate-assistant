@@ -57,10 +57,10 @@ async def match_preparation(
         )
 
     return {
-        "正方一辩立论": pro_statement,
-        "反方一辩立论": con_statement,
-        "正方立论框架": pro_outline,
-        "反方立论框架": con_outline,
+        "pro_statement": pro_statement,
+        "con_statement": con_statement,
+        "pro_outline": pro_outline,
+        "con_outline": con_outline,
     }
 
 

@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,8 +21,8 @@ class RunConfig:
 
 @dataclass
 class AppConfig:
-    api_keys: ApiKeys = ApiKeys()
-    run_config: RunConfig = RunConfig()
+    api_keys: ApiKeys = field(default_factory=ApiKeys)
+    run_config: RunConfig = field(default_factory=RunConfig)
     is_demo: bool = True
 
 
