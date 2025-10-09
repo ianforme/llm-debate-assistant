@@ -1,13 +1,14 @@
-from config import OPENAI_API_KEY, ORG_KEY, PROJECT_KEY
+from llm_debate_assistant.config import app_config
 from openai import OpenAI
 from typing import Callable, Optional
 
 
 client = OpenAI(
-    api_key = OPENAI_API_KEY,
-    organization=ORG_KEY,
-    project=PROJECT_KEY
+    api_key=app_config.api_keys.openai_api_key,
+    organization=app_config.api_keys.org_key,
+    project=app_config.api_keys.project_key,
 )
+
 
 def rewrite_style(input_text, style_example):
     prompt = f"""
@@ -27,12 +28,11 @@ def rewrite_style(input_text, style_example):
     """
 
     res = client.responses.create(
-        model = 'gpt-5-mini-2025-08-07',
-        input = prompt,
+        model="gpt-5-mini-2025-08-07",
+        input=prompt,
     )
 
     return res.output_text
-
 
 
 def mk_notify(status_cb: Optional[Callable[[str], None]]):
@@ -46,4 +46,5 @@ def mk_notify(status_cb: Optional[Callable[[str], None]]):
             except Exception:
                 # 不让 UI 回调影响主流程
                 pass
+
     return _notify

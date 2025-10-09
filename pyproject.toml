@@ -1,0 +1,29 @@
+[project]
+name = "llm-debate-assistant"
+version = "0.1.0"
+description = "LLM powered Chinese debate assistant"
+authors = [
+    {name = "ianforme, whanyu1212, yatihe01, Orange-eat97"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "openai<2",
+    "openai-agents==0.3.3",
+    "pydantic",
+    "streamlit",
+    "python-dotenv",
+    "ipykernel (>=6.30.1,<7.0.0)",
+    "black (>=25.9.0,<26.0.0)",
+    "isort (>=6.1.0,<7.0.0)",
+    "flake8 (>=7.3.0,<8.0.0)",
+    "docformatter (>=1.7.7,<2.0.0)",
+    "pre-commit (>=4.3.0,<5.0.0)",
+    "rich (>=14.1.0,<15.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
