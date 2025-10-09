@@ -1,12 +1,12 @@
 from openai import OpenAI
-from config import config
+from llm_debate_assistant.config import app_config
 
 import os
-from src.utils import rewrite_style, mk_notify
+from llm_debate_assistant.utils.helpers import rewrite_style, mk_notify
 from llm_debate_assistant.templates.opening_statement import (
     opening_statement_style_example,
 )
-from prompts.opening_statement_prompts import (
+from llm_debate_assistant.prompts.opening_statement_prompts import (
     debate_outline_prompt,
     example_card_prompt,
     opening_statement_prompt,
@@ -30,12 +30,12 @@ from openai.types.shared import Reasoning
 import datetime
 
 client = OpenAI(
-    api_key=config.api_keys.openai_api_key,
-    organization=config.api_keys.org_key,
-    project=config.api_keys.project_key,
+    api_key=app_config.api_keys.openai_api_key,
+    organization=app_config.api_keys.org_key,
+    project=app_config.api_keys.project_key,
 )
 
-os.environ["OPENAI_API_KEY"] = config.api_keys.openai_api_key
+os.environ["OPENAI_API_KEY"] = app_config.api_keys.openai_api_key
 
 
 def generate_debate_outline(topic, side):
@@ -69,7 +69,7 @@ def fetch_one_sync(argument, warrant, evidence_needed, topic, side):
 
 async def fetch_one_wrapped(sema, argument, warrant, evidence_needed, topic, side):
     backoff = 0.5
-    for attempt in range(1, config.run_config.retries + 1):
+    for attempt in range(1, app_config.run_config.retries + 1):
         try:
             async with sema:
                 evidences = await asyncio.to_thread(
@@ -78,14 +78,16 @@ async def fetch_one_wrapped(sema, argument, warrant, evidence_needed, topic, sid
             return argument, warrant, evidences
         except Exception as e:
             print(e)
-            if attempt == config.run_config.retries:
+            if attempt == app_config.run_config.retries:
                 return argument, warrant, []
-            await asyncio.sleep(backoff + random.random() * config.run_config.jitter)
+            await asyncio.sleep(
+                backoff + random.random() * app_config.run_config.jitter
+            )
             backoff *= 2
 
 
 async def parallel_fetch_evidences(debate_outline, topic, side):
-    sema = asyncio.Semaphore(config.run_config.concurrency)
+    sema = asyncio.Semaphore(app_config.run_config.concurrency)
     tasks = []
 
     for arg_card in debate_outline["arguments"]:

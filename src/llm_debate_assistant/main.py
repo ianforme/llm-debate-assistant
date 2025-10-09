@@ -8,11 +8,11 @@ from llm_debate_assistant.core.judge import generate_judge_feedback
 from llm_debate_assistant.utils.helpers import mk_notify
 import pickle
 import time
-from llm_debate_assistant.config.config import config
+from llm_debate_assistant.config import app_config
 
 
 async def match_preparation(
-    topic, llm_as_judge=True, status_cb=None, demo=config.is_demo
+    topic, llm_as_judge=True, status_cb=None, demo=app_config.is_demo
 ):
     notify = mk_notify(status_cb)
     notify(f"开始赛前准备：{topic}（LLM教练={llm_as_judge}）\n")
@@ -71,7 +71,7 @@ async def simulate_match(
     con_statement,
     con_outline,
     status_cb=None,
-    demo=config.is_demo,
+    demo=app_config.is_demo,
 ):
     notify = mk_notify(status_cb)
     notify("开始比赛模拟\n")

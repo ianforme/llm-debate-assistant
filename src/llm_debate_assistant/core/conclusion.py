@@ -1,15 +1,15 @@
-from prompts.conclusion_prompts import conclusion_prompts
+from llm_debate_assistant.prompts.conclusion_prompts import conclusion_prompts
 from llm_debate_assistant.templates.opening_statement import (
     opening_statement_style_example,
 )
-from src.utils import rewrite_style
+from llm_debate_assistant.utils.helpers import rewrite_style
 from openai import OpenAI
-from config import config
+from llm_debate_assistant.config import app_config
 
 client = OpenAI(
-    api_key=config.api_keys.openai_api_key,
-    organization=config.api_keys.org_key,
-    project=config.api_keys.project_key,
+    api_key=app_config.api_keys.openai_api_key,
+    organization=app_config.api_keys.org_key,
+    project=app_config.api_keys.project_key,
 )
 
 

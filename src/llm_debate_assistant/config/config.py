@@ -26,4 +26,4 @@ class AppConfig:
     is_demo: bool = True
 
 
-config = AppConfig()
+app_config = AppConfig()
