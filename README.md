@@ -1,10 +1,44 @@
 # llm-debate-assistant
 基于大语言模型的辩论比赛备赛助手. Powered by GPT 5
 
-# Installation
-1. Python 3.11 and above
-2. `pip install -r requirements.txt`
-3. update the openai project, org and api keys in config
-4. to run in streamlit UI: `streamlit run app.py`
+---
+
+## Table of Contents
+- [llm-debate-assistant](#llm-debate-assistant)
+  - [Table of Contents](#table-of-contents)
+  - [Getting Started](#getting-started)
+  - [Run the App](#run-the-app)
+
+## Getting Started
+This project uses `poetry` to manage dependencies
+
+```bash
+poetry config virtualenvs.in-project true
+```
+
+
+Then install the dependencies
+```bash
+poetry install
+```
+
+Then activate the virtual environment
+```bash
+source .venv/bin/activate
+```
 
 Note: to run the llms, set `is_demo=False` in `config.py`. Otherwise the demo UI will load the generated outputs from the previous run
+
+---
+
+## Run the App
+
+To generate the debate content:
+```bash
+python -m examples.run_debate
+```
+
+To view the debate in the UI:
+```bash
+streamlit run frontend/app.py
+```

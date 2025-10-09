@@ -1,13 +1,19 @@
-from src.opening_statement import generate_opening_statement
-from src.rebuttals import generate_statement_rebuttal, generate_further_rebuttal
-from src.conclusion import generate_conclusion
-from src.judge import generate_judge_feedback
-from src.utils import mk_notify
+from llm_debate_assistant.core.opening_statement import generate_opening_statement
+from llm_debate_assistant.core.rebuttals import (
+    generate_statement_rebuttal,
+    generate_further_rebuttal,
+)
+from llm_debate_assistant.core.conclusion import generate_conclusion
+from llm_debate_assistant.core.judge import generate_judge_feedback
+from llm_debate_assistant.utils.helpers import mk_notify
 import pickle
 import time
-from config import is_demo
+from llm_debate_assistant.config.config import config
 
-async def match_preparation(topic, llm_as_judge=True, status_cb=None, demo=is_demo):
+
+async def match_preparation(
+    topic, llm_as_judge=True, status_cb=None, demo=config.is_demo
+):
     notify = mk_notify(status_cb)
     notify(f"开始赛前准备：{topic}（LLM教练={llm_as_judge}）\n")
 
@@ -35,33 +41,44 @@ async def match_preparation(topic, llm_as_judge=True, status_cb=None, demo=is_de
         time.sleep(0.5)
         notify("=" * 10 + "Stage 5: 基于示例优化写作风格..." + "=" * 10 + "\n")
 
-        pro_statement = pickle.load(open('./outputs/pro_statement.pkl', 'rb'))
-        con_statement = pickle.load(open('./outputs/con_statement.pkl', 'rb'))
-        pro_outline = pickle.load(open('./outputs/pro_outline.pkl', 'rb'))
-        con_outline = pickle.load(open('./outputs/con_outline.pkl', 'rb'))
-
+        pro_statement = pickle.load(open("./demo_outputs/pro_statement.pkl", "rb"))
+        con_statement = pickle.load(open("./demo_outputs/con_statement.pkl", "rb"))
+        pro_outline = pickle.load(open("./demo_outputs/pro_outline.pkl", "rb"))
+        con_outline = pickle.load(open("./demo_outputs/con_outline.pkl", "rb"))
 
     else:
         notify("正在准备正方框架及立论...\n")
-        pro_statement, pro_outline = await generate_opening_statement(topic, "正方", llm_as_judge, status_cb)
+        pro_statement, pro_outline = await generate_opening_statement(
+            topic, "正方", llm_as_judge, status_cb
+        )
         notify("正在准备反方框架及立论...\n")
-        con_statement, con_outline = await generate_opening_statement(topic, "反方", llm_as_judge, status_cb)
+        con_statement, con_outline = await generate_opening_statement(
+            topic, "反方", llm_as_judge, status_cb
+        )
 
     return {
-        '正方一辩立论': pro_statement,
-        '反方一辩立论': con_statement,
-        '正方立论框架': pro_outline,
-        '反方立论框架': con_outline
+        "正方一辩立论": pro_statement,
+        "反方一辩立论": con_statement,
+        "正方立论框架": pro_outline,
+        "反方立论框架": con_outline,
     }
 
 
-async def simulate_match(topic, pro_statement, pro_outline, con_statement, con_outline, status_cb=None, demo=is_demo):
+async def simulate_match(
+    topic,
+    pro_statement,
+    pro_outline,
+    con_statement,
+    con_outline,
+    status_cb=None,
+    demo=config.is_demo,
+):
     notify = mk_notify(status_cb)
     notify("开始比赛模拟\n")
 
     if demo:
-        notify("正方二辩正在思考...\n") 
-        time.sleep(0.5)      
+        notify("正方二辩正在思考...\n")
+        time.sleep(0.5)
         notify("反方二辩正在思考...\n")
         time.sleep(0.5)
         notify("正方三辩正在思考...\n")
@@ -75,19 +92,27 @@ async def simulate_match(topic, pro_statement, pro_outline, con_statement, con_o
         notify("评审正在打分...\n")
         time.sleep(0.5)
 
-        pro_rebuttals = pickle.load(open('./outputs/pro_rebuttals.pkl', 'rb'))
-        con_rebuttals = pickle.load(open('./outputs/con_rebuttals.pkl', 'rb'))
-        pro_further_rebuttals = pickle.load(open('./outputs/pro_further_rebuttals.pkl', 'rb'))
-        con_further_rebuttals = pickle.load(open('./outputs/con_further_rebuttals.pkl', 'rb'))
-        con_conclusions = pickle.load(open('./outputs/con_conclusions.pkl', 'rb'))
-        pro_conclusions = pickle.load(open('./outputs/pro_conclusions.pkl', 'rb'))
-        judge_feedback = pickle.load(open('./outputs/judge_feedback.pkl', 'rb'))
+        pro_rebuttals = pickle.load(open("./demo_outputs/pro_rebuttals.pkl", "rb"))
+        con_rebuttals = pickle.load(open("./demo_outputs/con_rebuttals.pkl", "rb"))
+        pro_further_rebuttals = pickle.load(
+            open("./demo_outputs/pro_further_rebuttals.pkl", "rb")
+        )
+        con_further_rebuttals = pickle.load(
+            open("./demo_outputs/con_further_rebuttals.pkl", "rb")
+        )
+        con_conclusions = pickle.load(open("./demo_outputs/con_conclusions.pkl", "rb"))
+        pro_conclusions = pickle.load(open("./demo_outputs/pro_conclusions.pkl", "rb"))
+        judge_feedback = pickle.load(open("./demo_outputs/judge_feedback.pkl", "rb"))
 
     else:
         notify("正方二辩正在思考...\n")
-        pro_rebuttals = await generate_statement_rebuttal(con_statement, pro_statement, topic, "正方", pro_outline)
+        pro_rebuttals = await generate_statement_rebuttal(
+            con_statement, pro_statement, topic, "正方", pro_outline
+        )
         notify("反方二辩正在思考...\n")
-        con_rebuttals = await generate_statement_rebuttal(pro_statement, con_statement, topic, "反方", con_outline)
+        con_rebuttals = await generate_statement_rebuttal(
+            pro_statement, con_statement, topic, "反方", con_outline
+        )
 
         debate_history = f"""
         正方一辩立论：
@@ -104,7 +129,9 @@ async def simulate_match(topic, pro_statement, pro_outline, con_statement, con_o
         """
 
         notify("正方三辩正在思考...\n")
-        pro_further_rebuttals = generate_further_rebuttal(debate_history, topic, '正方', pro_outline)
+        pro_further_rebuttals = generate_further_rebuttal(
+            debate_history, topic, "正方", pro_outline
+        )
 
         debate_history += f"""
         正方三辩陈词:
@@ -112,7 +139,9 @@ async def simulate_match(topic, pro_statement, pro_outline, con_statement, con_o
         """
 
         notify("反方三辩正在思考...\n")
-        con_further_rebuttals = generate_further_rebuttal(debate_history, topic, '反方', con_outline)
+        con_further_rebuttals = generate_further_rebuttal(
+            debate_history, topic, "反方", con_outline
+        )
 
         debate_history += f"""
         反方三辩陈词:
@@ -120,15 +149,19 @@ async def simulate_match(topic, pro_statement, pro_outline, con_statement, con_o
         """
 
         notify("反方四辩正在思考...\n")
-        con_conclusions = generate_conclusion(debate_history, topic, '反方', con_outline)
-        
+        con_conclusions = generate_conclusion(
+            debate_history, topic, "反方", con_outline
+        )
+
         debate_history += f"""
         反方四辩结辩:
         {con_conclusions}
         """
 
         notify("正方四辩正在思考...\n")
-        pro_conclusions = generate_conclusion(debate_history, topic, '正方', pro_outline)
+        pro_conclusions = generate_conclusion(
+            debate_history, topic, "正方", pro_outline
+        )
 
         debate_history += f"""
         正方四辩结辩:
@@ -147,5 +180,5 @@ async def simulate_match(topic, pro_statement, pro_outline, con_statement, con_o
         "反方三辩陈词": con_further_rebuttals,
         "反方四辩结辩": con_conclusions,
         "正方四辩结辩": pro_conclusions,
-        "评审意见": judge_feedback
+        "评审意见": judge_feedback,
     }
