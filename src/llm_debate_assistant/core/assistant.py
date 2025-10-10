@@ -17,10 +17,12 @@ from llm_debate_assistant.prompts.opening_statement_prompts import (
     example_card_prompt,
     opening_statement_prompt,
 )
+from llm_debate_assistant.prompts.summary_prompt import match_summary_prompt
 from llm_debate_assistant.config.schemas import (
     OpeningStatementOutline,
     Examples,
     OpeningStatement,
+    MatchTurnSummary
 )
 
 
@@ -143,6 +145,17 @@ class DebateAssistant:
             opening_statement_prompt(debate_outline, topic, side),
             structured_output=OpeningStatement,
             reasoning={"effort": "medium"},
+        )
+    
+    def generate_match_summary(
+            self, topic: str, speech: str
+    ):
+        print("总结辩手发言...")
+        return self._generate(
+            match_summary_prompt(topic, speech),
+            MatchTurnSummary,
+            reasoning={"effort": "minimal"},
+            text={"verbosity": "low"},
         )
 
     def generate_further_rebuttal(self, debate_history, topic, side, debate_outline, style_example):

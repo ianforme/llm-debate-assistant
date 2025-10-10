@@ -55,3 +55,14 @@ class JudgeComment(BaseModel):
     pro_score: int = Field(ge=0, le=100)
     con_score: int = Field(ge=0, le=100)
     feedback: str
+
+class ArgumentBase(BaseModel):
+    argument: str
+    warrant: str
+    evidences: str | None = None
+
+class MatchTurnSummary(BaseModel):
+    keyword_definition: dict[str, str] | None = None
+    weighing_criterion: str | None = None
+    arguments: list[ArgumentBase] | None = None
+    rebuttals: list[RebuttalBase] | None = None
