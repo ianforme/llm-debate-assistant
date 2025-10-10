@@ -15,10 +15,8 @@ from llm_debate_assistant.prompts.opening_statement_prompts import (
     opening_statement_improver_prompt,
     opening_statement_evaluator_prompt,
 )
+from llm_debate_assistant.prompts.rebuttal_prompts import statement_rebuttal_prompt
 from llm_debate_assistant.utils.helpers import rewrite_style
-from llm_debate_assistant.templates.opening_statement import (
-    opening_statement_style_example,
-)
 
 
 class DebateOrchestrator:
@@ -71,7 +69,7 @@ class DebateOrchestrator:
         return results
 
     async def generate_statement_rebuttal(
-        self, oppo_statement, own_statement, topic, side, debate_outline
+        self, oppo_statement, own_statement, topic, side, debate_outline, style_example
     ):
         retbutal_outline = await self.generate_rebuttals_outline(
             oppo_statement, own_statement, topic, side, debate_outline
@@ -85,58 +83,36 @@ class DebateOrchestrator:
             text={"verbosity": "high"},
         )
 
-        rewritten_res = rewrite_style(res, opening_statement_style_example)
+        rewritten_res = rewrite_style(res, style_example)
         return rewritten_res
 
-    async def fetch_one_wrapped(
-        self,
-        sema,
-        argument: str,
-        warrant: str,
-        evidence_needed: str,
-        topic: str,
-        side: str,
-    ):
-        backoff = 0.5
-        for attempt in range(1, app_config.run_config.retries + 1):
-            try:
-                async with sema:
-                    evidences = await asyncio.to_thread(
-                        self.assistant.fetch_one_sync,
+    async def parallel_fetch_evidences(
+        self, debate_outline: Dict[str, Any], topic: str, side: str
+    ):  
+        # default we have 3 arguments per opening statement, each argument will take one thread
+        sema = asyncio.Semaphore(3)
+        tasks = []
+
+        async def run_with_sema(func, argument, warrant, evidence_needed, topic, side):
+            async with sema:
+                return argument, warrant, await asyncio.to_thread(func, argument, warrant, evidence_needed, topic, side)
+
+        for arg_card in debate_outline["arguments"]:
+            argument = arg_card['argument']
+            warrant = arg_card['warrant']
+            evidence_needed = ';'.join(arg_card['evidence_needed'])
+            tasks.append(
+                asyncio.create_task(
+                    run_with_sema(
+                        self.assistant.search_for_evidence,
                         argument,
                         warrant,
                         evidence_needed,
                         topic,
                         side,
                     )
-                return argument, warrant, evidences
-            except Exception as e:
-                print(e)
-                if attempt == app_config.run_config.retries:
-                    return argument, warrant, []
-                await asyncio.sleep(
-                    backoff + random.random() * app_config.run_config.jitter
                 )
-                backoff *= 2
-
-    async def parallel_fetch_evidences(
-        self, debate_outline: Dict[str, Any], topic: str, side: str
-    ):
-        sema = asyncio.Semaphore(app_config.run_config.concurrency)
-        tasks = []
-
-        for arg_card in debate_outline["arguments"]:
-            for evidence_needed in arg_card["evidence_needed"]:
-                tasks.append(
-                    self.fetch_one_wrapped(
-                        sema,
-                        arg_card["argument"],
-                        arg_card["warrant"],
-                        evidence_needed,
-                        topic,
-                        side,
-                    )
-                )
+            )
         results = await asyncio.gather(*tasks)
 
         arguments = []
@@ -244,7 +220,7 @@ class DebateOrchestrator:
         return enhanced_opening_statement.final_output, input_items
 
     async def generate_opening_statement(
-        self, topic: str, side: str, llm_as_judge: bool = True, status_cb=None
+        self, topic: str, side: str, style_example: str, llm_as_judge: bool = True, status_cb=None
     ):
         notify = mk_notify(status_cb)
 
@@ -270,14 +246,14 @@ class DebateOrchestrator:
             notify("=" * 10 + "Stage 5: 基于示例优化写作风格..." + "=" * 10 + "\n")
             final_opening_statement = rewrite_style(
                 enhanced_opening_statement.opening_statement,
-                opening_statement_style_example,
+                style_example,
             )
 
         else:
             notify("=" * 10 + "Stage 4: 基于示例优化写作风格..." + "=" * 10 + "\n")
             final_opening_statement = rewrite_style(
                 opening_statement["opening_statement"],
-                opening_statement_style_example,
+                style_example,
             )
 
         return final_opening_statement, debate_outline

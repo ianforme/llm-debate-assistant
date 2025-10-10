@@ -2,9 +2,6 @@ from llm_debate_assistant.core.client import client
 import json
 from typing import Optional, Any, Dict
 from llm_debate_assistant.prompts.conclusion_prompts import conclusion_prompts
-from llm_debate_assistant.templates.opening_statement import (
-    opening_statement_style_example,
-)
 from llm_debate_assistant.utils.helpers import rewrite_style
 from llm_debate_assistant.prompts.judge_prompts import judge_comment_prompts
 from llm_debate_assistant.config.schemas import JudgeComment
@@ -12,7 +9,6 @@ from llm_debate_assistant.prompts.rebuttal_prompts import (
     definition_rebuttal_prompt,
     weighing_criterion_rebuttal_prompt,
     argument_rebuttal_prompt,
-    statement_rebuttal_prompt,
     further_rebuttal_prompt,
 )
 from llm_debate_assistant.config.schemas import Rebuttal
@@ -61,14 +57,14 @@ class DebateAssistant:
             )
             return response.output_text
 
-    def generate_conclusion(self, debate_history, topic, side, debate_outline):
+    def generate_conclusion(self, debate_history, topic, side, debate_outline, style_example):
         res = self._generate(
             conclusion_prompts(debate_history, topic, side, debate_outline),
             reasoning={"effort": "low"},
             text={"verbosity": "high"},
         )
 
-        rewritten_res = rewrite_style(res.output_text, opening_statement_style_example)
+        rewritten_res = rewrite_style(res.output_text, style_example)
         return rewritten_res
 
     def generate_definition_rebuttal(
@@ -123,7 +119,7 @@ class DebateAssistant:
             reasoning={"effort": "high"},
         )
 
-    def fetch_one_sync(
+    def search_for_evidence(
         self, argument: str, warrant: str, evidence_needed: str, topic: str, side: str
     ):
         print(
@@ -149,13 +145,13 @@ class DebateAssistant:
             reasoning={"effort": "medium"},
         )
 
-    def generate_further_rebuttal(self, debate_history, topic, side, debate_outline):
+    def generate_further_rebuttal(self, debate_history, topic, side, debate_outline, style_example):
         res = self._generate(
             further_rebuttal_prompt(debate_history, topic, side, debate_outline),
             reasoning={"effort": "low"},
             text={"verbosity": "high"},
         )
-        rewritten_res = rewrite_style(res, opening_statement_style_example)
+        rewritten_res = rewrite_style(res, style_example)
         return rewritten_res
 
     def generate_judge_feedback(self, debate_history, topic):
