@@ -68,6 +68,9 @@ class DebateAssistant:
             text={"verbosity": "high"},
         )
 
+        rewritten_res = rewrite_style(res.output_text, opening_statement_style_example)
+        return rewritten_res
+
     def generate_definition_rebuttal(
         self, oppo_statement, own_statement, topic, side, debate_outline
     ):
@@ -152,8 +155,6 @@ class DebateAssistant:
             reasoning={"effort": "low"},
             text={"verbosity": "high"},
         )
-        rewritten_res = rewrite_style(res, opening_statement_style_example)
-        return rewritten_res
         rewritten_res = rewrite_style(res, opening_statement_style_example)
         return rewritten_res
 
