@@ -11,17 +11,11 @@ from llm_debate_assistant.templates.opening_statement import (
 from llm_debate_assistant.utils.helpers import rewrite_style
 from ..config.schemas import Rebuttal
 
-from openai import OpenAI
-from llm_debate_assistant.config import app_config
+from ..config.schemas import Rebuttal
+from .client import client
 
 import json
 import asyncio
-
-client = OpenAI(
-    api_key=app_config.api_keys.openai_api_key,
-    organization=app_config.api_keys.org_key,
-    project=app_config.api_keys.project_key,
-)
 
 
 def generate_definition_rebuttal(
