@@ -248,7 +248,7 @@ class RealtimeAssistant:
 
     
     # Function to establish connection with OpenAI's WebSocket API
-    def connect_to_openai(self, instruction):
+    def connect_to_openai(self, instruction, overall_time_in_seconds):
         ws = None
         try:
             ws = self.create_connection_with_ipv4(
@@ -268,9 +268,15 @@ class RealtimeAssistant:
             mic_thread = threading.Thread(target=self.send_mic_audio_to_websocket, args=(ws,))
             mic_thread.start()
 
+            stime = time.time()
+            print("Time starts!")
             # Wait for stop_event to be set
             while not self.stop_event.is_set():
                 time.sleep(0.1)
+                if (time.time() - stime) >= overall_time_in_seconds:
+                    self.stop_event.set()
+                    print("Time is up!")
+                    break
 
             # Send a close frame and close the WebSocket gracefully
             print('Sending WebSocket close frame.')
@@ -290,7 +296,7 @@ class RealtimeAssistant:
                 except Exception as e:
                     print(f'Error closing WebSocket connection: {e}')
 
-    def run(self, instruction):
+    def run(self, instruction, overall_time_in_seconds):
         p = pyaudio.PyAudio()
 
         mic_stream = p.open(
@@ -315,10 +321,7 @@ class RealtimeAssistant:
             mic_stream.start_stream()
             speaker_stream.start_stream()
 
-            self.connect_to_openai(instruction)
-
-            while mic_stream.is_active() and speaker_stream.is_active():
-                time.sleep(0.1)
+            self.connect_to_openai(instruction, overall_time_in_seconds)
 
         except KeyboardInterrupt:
             print('Gracefully shutting down...')

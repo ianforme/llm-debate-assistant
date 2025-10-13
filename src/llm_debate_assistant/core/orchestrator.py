@@ -52,7 +52,7 @@ class DebateOrchestrator:
         return final_opening_statement, debate_outline
     
     async def rebuttal_crossfire_practice(
-        self, topic: str, assistant_side: str, assistant_statement: str, human_statement: str, proposed_attacks: str = None
+        self, topic: str, assistant_side: str, assistant_statement: str, human_statement: str, overall_time_in_seconds: int, proposed_attacks: str = None
     ):
         
         if assistant_side == "正方":
@@ -62,7 +62,7 @@ class DebateOrchestrator:
 
         match_history = f"{human_side}:\n{self.assistant.generate_match_summary(topic, human_statement)}"
         crossfire_context = rebuttal_crossfire_prompt(topic, assistant_side, match_history, assistant_statement, proposed_attacks)
-        self.realtime_assistant.run(crossfire_context)
+        self.realtime_assistant.run(crossfire_context, overall_time_in_seconds)
 
 if __name__ == "__main__":
     assistant = DebateAssistant()
