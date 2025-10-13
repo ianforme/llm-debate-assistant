@@ -1,13 +1,16 @@
 from llm_debate_assistant.core.assistant import DebateAssistant
+from llm_debate_assistant.core.realtime_assistant import RealtimeAssistant
 import asyncio
-from llm_debate_assistant.utils.helpers import mk_notify
+from llm_debate_assistant.utils.helpers import mk_notify, rewrite_style
 from llm_debate_assistant.config import app_config
-from llm_debate_assistant.utils.helpers import rewrite_style
+
+from llm_debate_assistant.prompts.rebuttal_prompts import rebuttal_crossfire_prompt
 
 
 class DebateOrchestrator:
-    def __init__(self, assistant: DebateAssistant):
+    def __init__(self, assistant: DebateAssistant, realtime_assistant: RealtimeAssistant):
         self.assistant = assistant
+        self.realtime_assistant = realtime_assistant
 
     async def generate_opening_statement(
         self, topic: str, side: str, style_example: str, llm_as_judge: bool = True, status_cb=None
@@ -47,11 +50,24 @@ class DebateOrchestrator:
             )
 
         return final_opening_statement, debate_outline
+    
+    async def rebuttal_crossfire_practice(
+        self, topic: str, assistant_side: str, assistant_statement: str, human_statement: str, proposed_attacks: str = None
+    ):
+        
+        if assistant_side == "正方":
+            human_side = "反方"
+        else:
+            human_side = "正方"
 
+        match_history = f"{human_side}:\n{self.assistant.generate_match_summary(topic, human_statement)}"
+        crossfire_context = rebuttal_crossfire_prompt(topic, assistant_side, match_history, assistant_statement, proposed_attacks)
+        self.realtime_assistant.run(crossfire_context)
 
 if __name__ == "__main__":
     assistant = DebateAssistant()
-    orchestrator = DebateOrchestrator(assistant)
+    realtime_assistant = RealtimeAssistant()
+    orchestrator = DebateOrchestrator(assistant, realtime_assistant)
     final_opening_statement, debate_outline = asyncio.run(
         orchestrator.generate_opening_statement(
             topic="人工智能是否应该被严格监管？", side="正方", llm_as_judge=True
