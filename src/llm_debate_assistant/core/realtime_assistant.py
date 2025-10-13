@@ -120,7 +120,7 @@ class RealtimeAssistant:
                         self.stop_audio_playback()
 
                     elif event_type == 'input_audio_buffer.speech_stopped':
-                        print('🔵 Speech stoped, creating new responses')
+                        print('🔵 Speech stopped, creating new responses')
                         self.create_responses_with_speech_history(ws, instruction)
 
                     elif event_type == 'response.audio.done':
