@@ -137,11 +137,11 @@ class RealtimeAssistant:
                         
                         elif event_type == 'conversation.item.input_audio_transcription.completed':
                             print(f"User Input: {message['transcript']}")
-                            self.human_speeches.append("用户：" + message['transcript'])
+                            self.human_speeches.append("用户:\n" + message['transcript'])
 
                         elif event_type == 'response.audio_transcript.done':
                             print(f"AI output: {message['transcript']}")
-                            self.assistant_speeches.append("本AI助手：" +message['transcript'])
+                            self.assistant_speeches.append("本AI助手:\n" +message['transcript'])
                     else:
                         print("Total user time is up. Exiting..")
                         break
@@ -338,6 +338,20 @@ class RealtimeAssistant:
             mic_stream.close()
             speaker_stream.stop_stream()
             speaker_stream.close()
+
+            # reset status
+            self.audio_buffer = bytearray()
+            self.mic_queue = queue.Queue()
+            self.stop_event = threading.Event()
+
+            self.mic_active = app_config.realtime_config.mic_active
+            
+            self.is_playing = False
+            self.assistant_speeches = []
+            self.human_speeches = []
+
+            self.user_session_total_time = 0
+            self.user_session_start_time = None
 
             p.terminate()
             print('Audio streams stopped and resources released. Exiting.')
