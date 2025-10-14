@@ -64,6 +64,15 @@ class DebateOrchestrator:
         crossfire_context = rebuttal_crossfire_prompt(topic, assistant_side, match_history, assistant_statement, proposed_attacks)
         self.realtime_assistant.run(crossfire_context, overall_time_in_seconds)
 
+        # assuming AI always start first in the crossfire
+        speech_history = "\n".join([x for pair in zip(self.realtime_assistant.assistant_speeches, self.realtime_assistant.human_speeches) for x in pair])
+        speech_history = speech_history.replace("用户：", "用户:\n").replace("本AI助手：", "本AI助手:\n" )
+
+        match_history += "\n" + speech_history
+        judge_feedback = self.assistant.generate_crossfire_practice_feedback(match_history, topic)
+
+        return judge_feedback, match_history
+
 if __name__ == "__main__":
     assistant = DebateAssistant()
     realtime_assistant = RealtimeAssistant()

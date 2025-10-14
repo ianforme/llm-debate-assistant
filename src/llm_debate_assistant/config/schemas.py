@@ -66,3 +66,7 @@ class MatchTurnSummary(BaseModel):
     weighing_criterion: str | None = None
     arguments: list[ArgumentBase] | None = None
     rebuttals: list[RebuttalBase] | None = None
+
+class PracticeComment(BaseModel):
+    score: int = Field(ge=0, le=100)
+    feedback: str

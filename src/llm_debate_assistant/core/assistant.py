@@ -3,18 +3,19 @@ import json
 from typing import Optional, Any, Dict
 from llm_debate_assistant.prompts.conclusion_prompts import conclusion_prompts
 from llm_debate_assistant.utils.helpers import rewrite_style
-from llm_debate_assistant.prompts.judge_prompts import judge_comment_prompts
-from llm_debate_assistant.config.schemas import JudgeComment
+from llm_debate_assistant.prompts.judge_prompts import (
+    judge_comment_prompts, 
+    crossfire_comment_prompts
+)
 from llm_debate_assistant.prompts.rebuttal_prompts import (
     rebuttal_statement_prompt
 )
-from llm_debate_assistant.config.schemas import Rebuttal
 from llm_debate_assistant.prompts.opening_statement_prompts import (
     debate_outline_prompt,
     example_card_prompt,
     opening_statement_prompt,
     opening_statement_improver_prompt,
-    opening_statement_evaluator_prompt
+    opening_statement_evaluator_prompt,
 
 )
 from llm_debate_assistant.prompts.summary_prompt import match_summary_prompt
@@ -23,7 +24,9 @@ from llm_debate_assistant.config.schemas import (
     Examples,
     OpeningStatement,
     MatchTurnSummary,
-    OpeningStatementEvaluationFeedback
+    OpeningStatementEvaluationFeedback,
+    JudgeComment,
+    PracticeComment
 )
 
 from agents import Agent, Runner, trace, ModelSettings, WebSearchTool
@@ -127,7 +130,16 @@ class DebateAssistant:
             judge_comment_prompts(debate_history, topic),
             structured_output=JudgeComment,
             reasoning={"effort": "low"},
-            text={"verbosity": "high"},
+            text={"verbosity": "medium"},
+        )
+    
+    def generate_crossfire_practice_feedback(self, debate_history, topic):
+        print("Coaching making comments...")
+        return self._generate(
+            crossfire_comment_prompts(debate_history, topic),
+            structured_output=PracticeComment,
+            reasoning={"effort": "low"},
+            text={"verbosity": "medium"},
         )
     
     def generate_rebuttal_statement(self, topic, side, match_history, debate_outline, minutes):
