@@ -4,7 +4,10 @@ import asyncio
 from llm_debate_assistant.utils.helpers import mk_notify, rewrite_style
 from llm_debate_assistant.config import app_config
 
-from llm_debate_assistant.prompts.rebuttal_prompts import rebuttal_crossfire_prompt
+from llm_debate_assistant.prompts.rebuttal_prompts import (
+    rebuttal_crossfire_or_interrogation_prompt, 
+    rebuttal_interrogated_prompt
+)
 
 
 class DebateOrchestrator:
@@ -52,17 +55,53 @@ class DebateOrchestrator:
         return final_opening_statement, debate_outline
     
     async def rebuttal_crossfire_practice(
-        self, topic: str, assistant_side: str, assistant_statement: str, human_statement: str, proposed_attacks: str = None
+        self, topic: str, assistant_side: str, assistant_statement: str, human_statement: str, user_time_in_seconds: int, proposed_attacks: str = None
     ):
-        
-        if assistant_side == "正方":
-            human_side = "反方"
-        else:
-            human_side = "正方"
 
-        match_history = f"{human_side}:\n{self.assistant.generate_match_summary(topic, human_statement)}"
-        crossfire_context = rebuttal_crossfire_prompt(topic, assistant_side, match_history, assistant_statement, proposed_attacks)
-        self.realtime_assistant.run(crossfire_context)
+        match_history = f"用户:\n{self.assistant.generate_match_summary(topic, human_statement)}"
+        exchange_context = rebuttal_crossfire_or_interrogation_prompt(topic, assistant_side, match_history, assistant_statement, proposed_attacks)
+        speech_history = self.realtime_assistant.run(exchange_context, user_time_in_seconds)
+
+        speech_history_text = "\n".join(speech_history)
+        match_history += "\n" + speech_history_text
+        match_history = "【练习背景】\n用户与AI进行对辩练习\n" + match_history
+
+        judge_feedback = self.assistant.generate_exchange_practice_feedback(match_history, topic)
+
+        return judge_feedback, speech_history
+    
+    async def rebuttal_interrogated_practice(
+        self, topic: str, assistant_side: str, assistant_statement: str, human_statement: str, user_time_in_seconds: int, proposed_attacks: str = None
+    ):
+
+        match_history = f"用户:\n{self.assistant.generate_match_summary(topic, human_statement)}"
+        exchange_context = rebuttal_crossfire_or_interrogation_prompt(topic, assistant_side, match_history, assistant_statement, proposed_attacks, is_interrogation=True)
+        speech_history = self.realtime_assistant.run(exchange_context, user_time_in_seconds)
+
+        speech_history_text = "\n".join(speech_history)
+        match_history += "\n" + speech_history_text
+        match_history = "【练习背景】\n用户与AI进行质询练习，AI为质询方，用户为被质询方\n" + match_history
+
+        judge_feedback = self.assistant.generate_exchange_practice_feedback(match_history, topic)
+
+        return judge_feedback, speech_history
+    
+
+    async def rebuttal_interrogation_practice(
+        self, topic: str, assistant_side: str, assistant_statement: str, user_time_in_seconds: int
+    ):
+
+        match_history = f"AI助手:\n{self.assistant.generate_match_summary(topic, assistant_statement)}"
+        exchange_context = rebuttal_interrogated_prompt(topic, assistant_side, match_history, assistant_statement)
+        speech_history = self.realtime_assistant.run(exchange_context, user_time_in_seconds, ai_start_first=False)
+
+        speech_history_text = "\n".join(speech_history)
+        match_history += "\n" + speech_history_text
+        match_history = "【练习背景】\n用户与AI进行质询练习，用户为质询方，AI为被质询方\n" + match_history
+
+        judge_feedback = self.assistant.generate_exchange_practice_feedback(match_history, topic)
+
+        return judge_feedback, speech_history
 
 if __name__ == "__main__":
     assistant = DebateAssistant()
