@@ -9,6 +9,9 @@ from llm_debate_assistant.prompts.rebuttal_prompts import (
     rebuttal_interrogated_prompt
 )
 
+from llm_debate_assistant.prompts.oregon_oxford_prompts import (
+    oregon_interrogated_prompts
+)
 
 class DebateOrchestrator:
     def __init__(self, assistant: DebateAssistant, realtime_assistant: RealtimeAssistant):
@@ -93,6 +96,23 @@ class DebateOrchestrator:
 
         match_history = f"AI助手:\n{self.assistant.generate_match_summary(topic, assistant_statement)}"
         exchange_context = rebuttal_interrogated_prompt(topic, assistant_side, match_history, assistant_statement)
+        speech_history = self.realtime_assistant.run(exchange_context, user_time_in_seconds, ai_start_first=False)
+
+        speech_history_text = "\n".join(speech_history)
+        match_history += "\n" + speech_history_text
+        match_history = "【练习背景】\n用户与AI进行质询练习，用户为质询方，AI为被质询方\n" + match_history
+
+        judge_feedback = self.assistant.generate_exchange_practice_feedback(match_history, topic)
+
+        return judge_feedback, speech_history
+    
+    def oregon_interrogation_practice(
+        self, topic: str, assistant_side: str, 
+        assistant_statement: str, assistant_examples: str, 
+        user_time_in_seconds: int
+    ):
+        match_history = f"AI助手:\n{self.assistant.generate_match_summary(topic, assistant_statement)}"
+        exchange_context = oregon_interrogated_prompts(topic, assistant_side, match_history, assistant_examples)
         speech_history = self.realtime_assistant.run(exchange_context, user_time_in_seconds, ai_start_first=False)
 
         speech_history_text = "\n".join(speech_history)

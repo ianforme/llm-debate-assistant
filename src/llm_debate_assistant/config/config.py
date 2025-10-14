@@ -25,8 +25,6 @@ class RealtimeConfig:
     CHUNK_SIZE: int = 1024
     RATE: int = 24000
     FORMAT = pyaudio.paInt16   
-    mic_active: bool = None
-    REENGAGE_DELAY_MS: int = 500
     temperature: float = 0.6
     max_response_token: int = 4096
 

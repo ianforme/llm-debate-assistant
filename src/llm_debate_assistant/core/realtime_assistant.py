@@ -30,8 +30,7 @@ class RealtimeAssistant:
         self.RATE = app_config.realtime_config.RATE
         self.FORMAT = app_config.realtime_config.FORMAT
 
-        self.mic_active = app_config.realtime_config.mic_active
-        self.REENGAGE_DELAY_MS = app_config.realtime_config.REENGAGE_DELAY_MS
+        self.mic_active = None
 
         self.is_playing = False
         self.assistant_speeches = []
