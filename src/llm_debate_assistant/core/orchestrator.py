@@ -54,7 +54,7 @@ class DebateOrchestrator:
 
         return final_opening_statement, debate_outline
     
-    async def rebuttal_crossfire_practice(
+    def rebuttal_crossfire_practice(
         self, topic: str, assistant_side: str, assistant_statement: str, human_statement: str, user_time_in_seconds: int, proposed_attacks: str = None
     ):
 
@@ -70,7 +70,7 @@ class DebateOrchestrator:
 
         return judge_feedback, speech_history
     
-    async def rebuttal_interrogated_practice(
+    def rebuttal_interrogated_practice(
         self, topic: str, assistant_side: str, assistant_statement: str, human_statement: str, user_time_in_seconds: int, proposed_attacks: str = None
     ):
 
@@ -87,7 +87,7 @@ class DebateOrchestrator:
         return judge_feedback, speech_history
     
 
-    async def rebuttal_interrogation_practice(
+    def rebuttal_interrogation_practice(
         self, topic: str, assistant_side: str, assistant_statement: str, user_time_in_seconds: int
     ):
 

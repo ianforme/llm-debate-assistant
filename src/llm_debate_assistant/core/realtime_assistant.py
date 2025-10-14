@@ -112,7 +112,7 @@ class RealtimeAssistant:
                         if event_type == 'session.created':
                             self.send_fc_session_update(ws)
 
-                            # if AI needs to speek first
+                            # if AI needs to speak first
                             self.start_conversation(ws, instruction, ai_start_first)
 
                         elif event_type == 'error':
