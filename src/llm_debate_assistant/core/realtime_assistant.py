@@ -118,7 +118,7 @@ class RealtimeAssistant:
                         elif event_type == 'response.audio.delta':
                             audio_content = base64.b64decode(message['delta'])
                             self.audio_buffer.extend(audio_content)
-                            # print(f'🔵 Received {len(audio_content)} bytes, total buffer size: {len(self.audio_buffer)}')
+                            print(f'🔵 Received {len(audio_content)} bytes, total buffer size: {len(self.audio_buffer)}')
 
                         elif event_type == 'input_audio_buffer.speech_started':
                             print('🔵 Speech started, clearing buffer and stopping playback.')
@@ -141,7 +141,7 @@ class RealtimeAssistant:
 
                         elif event_type == 'response.audio_transcript.done':
                             print(f"AI output: {message['transcript']}")
-                            self.assistant_speeches.append("本AI助手:\n" +message['transcript'])
+                            self.assistant_speeches.append("AI助手:\n" +message['transcript'])
                     else:
                         print("Total user time is up. Exiting..")
                         break
@@ -334,6 +334,9 @@ class RealtimeAssistant:
             self.stop_event.set()
 
         finally:
+            # get the conversation history as output
+            convo_history = [x for pair in zip(self.assistant_speeches, self.human_speeches) for x in pair]
+
             mic_stream.stop_stream()
             mic_stream.close()
             speaker_stream.stop_stream()
@@ -345,7 +348,7 @@ class RealtimeAssistant:
             self.stop_event = threading.Event()
 
             self.mic_active = app_config.realtime_config.mic_active
-            
+
             self.is_playing = False
             self.assistant_speeches = []
             self.human_speeches = []
@@ -355,3 +358,5 @@ class RealtimeAssistant:
 
             p.terminate()
             print('Audio streams stopped and resources released. Exiting.')
+        
+            return convo_history

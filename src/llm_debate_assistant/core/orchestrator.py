@@ -57,12 +57,9 @@ class DebateOrchestrator:
 
         match_history = f"用户:\n{self.assistant.generate_match_summary(topic, human_statement)}"
         exchange_context = rebuttal_crossfire_or_interrogation_prompt(topic, assistant_side, match_history, assistant_statement, proposed_attacks)
-        self.realtime_assistant.run(exchange_context, user_time_in_seconds)
+        speech_history = self.realtime_assistant.run(exchange_context, user_time_in_seconds)
 
-        # assuming AI always start first in the crossfire
-        speech_history = [x for pair in zip(self.realtime_assistant.assistant_speeches, self.realtime_assistant.human_speeches) for x in pair]
         speech_history_text = "\n".join(speech_history)
-
         match_history += "\n" + speech_history_text
         match_history = "【练习背景】\n用户与AI进行对辩练习\n" + match_history
 
@@ -76,12 +73,9 @@ class DebateOrchestrator:
 
         match_history = f"用户:\n{self.assistant.generate_match_summary(topic, human_statement)}"
         exchange_context = rebuttal_crossfire_or_interrogation_prompt(topic, assistant_side, match_history, assistant_statement, proposed_attacks, is_interrogation=True)
-        self.realtime_assistant.run(exchange_context, user_time_in_seconds)
+        speech_history = self.realtime_assistant.run(exchange_context, user_time_in_seconds)
 
-        # assuming AI always start first in the interrogation
-        speech_history = [x for pair in zip(self.realtime_assistant.assistant_speeches, self.realtime_assistant.human_speeches) for x in pair]
         speech_history_text = "\n".join(speech_history)
-
         match_history += "\n" + speech_history_text
         match_history = "【练习背景】\n用户与AI进行质询练习，AI为质询方，用户为被质询方\n" + match_history
 
