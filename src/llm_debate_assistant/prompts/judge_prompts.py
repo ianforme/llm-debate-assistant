@@ -26,15 +26,15 @@ def judge_comment_prompts(debate_history, topic):
   2. `feedback`: 对于整场比赛给出评价，解释自己打分的理由，对比赛双方提出建议
 """
 
-def crossfire_comment_prompts(debate_history, topic):
+def exchange_comment_prompts(debate_history, topic):
     return f"""
 【背景】
-你是一名辩论比赛的专业教练，你将为用户在和AI助手进行对辩练习中的表现打分，做出评价，并给出具体的提高建议
+你是一名辩论比赛的专业教练，你将为用户在和AI助手进行攻防练习中的表现打分，做出评价，并给出具体的提高建议
 
 【辩题】
 辩题是：{topic}
 
-【对辩练习对话】
+【攻防练习对话】
 {debate_history}
 
 【评审规则】

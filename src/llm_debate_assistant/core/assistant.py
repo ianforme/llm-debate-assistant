@@ -5,7 +5,7 @@ from llm_debate_assistant.prompts.conclusion_prompts import conclusion_prompts
 from llm_debate_assistant.utils.helpers import rewrite_style
 from llm_debate_assistant.prompts.judge_prompts import (
     judge_comment_prompts, 
-    crossfire_comment_prompts
+    exchange_comment_prompts
 )
 from llm_debate_assistant.prompts.rebuttal_prompts import (
     rebuttal_statement_prompt
@@ -133,10 +133,10 @@ class DebateAssistant:
             text={"verbosity": "medium"},
         )
     
-    def generate_crossfire_practice_feedback(self, debate_history, topic):
+    def generate_exchange_practice_feedback(self, debate_history, topic):
         print("Coaching making comments...")
         return self._generate(
-            crossfire_comment_prompts(debate_history, topic),
+            exchange_comment_prompts(debate_history, topic),
             structured_output=PracticeComment,
             reasoning={"effort": "low"},
             text={"verbosity": "medium"},

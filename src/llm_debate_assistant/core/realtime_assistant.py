@@ -11,7 +11,8 @@ import websocket
 from llm_debate_assistant.config import app_config
 
 class RealtimeAssistant:
-    def __init__(self, ws_url='wss://api.openai.com/v1/realtime?model=gpt-realtime-mini-2025-10-06'):
+    def __init__(self, 
+                 ws_url='wss://api.openai.com/v1/realtime?model=gpt-realtime-mini-2025-10-06'):
 
         self.temperature = app_config.realtime_config.temperature
         self.max_response_token = app_config.realtime_config.max_response_token
@@ -35,6 +36,9 @@ class RealtimeAssistant:
         self.is_playing = False
         self.assistant_speeches = []
         self.human_speeches = []
+
+        self.user_session_total_time = 0
+        self.user_session_start_time = None
 
     def clear_audio_buffer(self):
         self.audio_buffer = bytearray()
@@ -89,50 +93,58 @@ class RealtimeAssistant:
 
 
     # Function to receive audio data from the WebSocket and process events
-    def receive_audio_from_websocket(self, ws, instruction):
+    def receive_audio_from_websocket(self, ws, instruction, user_time_in_seconds):
         try:
             while not self.stop_event.is_set():
                 try:
-                    message = ws.recv()
-                    if not message:  # Handle empty message (EOF or connection close)
-                        print('🔵 Received empty message (possibly EOF or WebSocket closing).')
+
+                    if (user_time_in_seconds is None) or (self.user_session_total_time <= user_time_in_seconds):
+                        message = ws.recv()
+                        if not message:  # Handle empty message (EOF or connection close)
+                            print('🔵 Received empty message (possibly EOF or WebSocket closing).')
+                            break
+
+                        # Now handle valid JSON messages only
+                        message = json.loads(message)
+                        event_type = message['type']
+                        print(f'⚡️ Received WebSocket event: {event_type}')
+
+                        if event_type == 'session.created':
+                            self.send_fc_session_update(ws, instruction)
+
+                        elif event_type == 'error':
+                            print(message['error'])
+
+                        elif event_type == 'response.audio.delta':
+                            audio_content = base64.b64decode(message['delta'])
+                            self.audio_buffer.extend(audio_content)
+                            # print(f'🔵 Received {len(audio_content)} bytes, total buffer size: {len(self.audio_buffer)}')
+
+                        elif event_type == 'input_audio_buffer.speech_started':
+                            print('🔵 Speech started, clearing buffer and stopping playback.')
+                            self.clear_audio_buffer()
+                            self.stop_audio_playback()
+                            self.user_session_start_time = time.time()
+
+                        elif event_type == 'input_audio_buffer.speech_stopped':
+                            self.create_responses_with_speech_history(ws, instruction)
+                            speech_time = time.time() - self.user_session_start_time
+                            self.user_session_total_time += speech_time
+                            print(f'🔵 Speech stopped, creating new responses; Speech time: {speech_time:.2} seconds; Total time: {self.user_session_total_time:.2}')
+
+                        elif event_type == 'response.audio.done':
+                            print('🔵 AI finished speaking.')
+                        
+                        elif event_type == 'conversation.item.input_audio_transcription.completed':
+                            print(f"User Input: {message['transcript']}")
+                            self.human_speeches.append("用户：" + message['transcript'])
+
+                        elif event_type == 'response.audio_transcript.done':
+                            print(f"AI output: {message['transcript']}")
+                            self.assistant_speeches.append("本AI助手：" +message['transcript'])
+                    else:
+                        print("Total user time is up. Exiting..")
                         break
-
-                    # Now handle valid JSON messages only
-                    message = json.loads(message)
-                    event_type = message['type']
-                    print(f'⚡️ Received WebSocket event: {event_type}')
-
-                    if event_type == 'session.created':
-                        self.send_fc_session_update(ws, instruction)
-
-                    elif event_type == 'error':
-                        print(message['error'])
-
-                    elif event_type == 'response.audio.delta':
-                        audio_content = base64.b64decode(message['delta'])
-                        self.audio_buffer.extend(audio_content)
-                        # print(f'🔵 Received {len(audio_content)} bytes, total buffer size: {len(self.audio_buffer)}')
-
-                    elif event_type == 'input_audio_buffer.speech_started':
-                        print('🔵 Speech started, clearing buffer and stopping playback.')
-                        self.clear_audio_buffer()
-                        self.stop_audio_playback()
-
-                    elif event_type == 'input_audio_buffer.speech_stopped':
-                        print('🔵 Speech stopped, creating new responses')
-                        self.create_responses_with_speech_history(ws, instruction)
-
-                    elif event_type == 'response.audio.done':
-                        print('🔵 AI finished speaking.')
-                    
-                    elif event_type == 'conversation.item.input_audio_transcription.completed':
-                        print(f"User Input: {message['transcript']}")
-                        self.human_speeches.append("用户：" + message['transcript'])
-
-                    elif event_type == 'response.audio_transcript.done':
-                        print(f"AI output: {message['transcript']}")
-                        self.assistant_speeches.append("本AI助手：" +message['transcript'])
 
                 except Exception as e:
                     print(f'Error receiving audio: {e}')
@@ -140,11 +152,11 @@ class RealtimeAssistant:
             print(f'Exception in receive_audio_from_websocket thread: {e}')
         finally:
             print('Exiting receive_audio_from_websocket thread.')
+            self.stop_event.set()
 
     def create_responses_with_speech_history(self, ws, context_instruction):
         # assume assistant starts first
         speech_history = [x for pair in zip(self.assistant_speeches, self.human_speeches) for x in pair]
-        print(speech_history)
         response_create = {
             "type": "response.create",
             "response": {
@@ -248,7 +260,7 @@ class RealtimeAssistant:
 
     
     # Function to establish connection with OpenAI's WebSocket API
-    def connect_to_openai(self, instruction, overall_time_in_seconds):
+    def connect_to_openai(self, instruction, user_time_in_seconds):
         ws = None
         try:
             ws = self.create_connection_with_ipv4(
@@ -262,21 +274,15 @@ class RealtimeAssistant:
 
 
             # Start the recv and send threads
-            receive_thread = threading.Thread(target=self.receive_audio_from_websocket, args=(ws, instruction,))
+            receive_thread = threading.Thread(target=self.receive_audio_from_websocket, args=(ws, instruction, user_time_in_seconds,))
             receive_thread.start()
 
             mic_thread = threading.Thread(target=self.send_mic_audio_to_websocket, args=(ws,))
             mic_thread.start()
 
-            stime = time.time()
-            print("Time starts!")
             # Wait for stop_event to be set
             while not self.stop_event.is_set():
                 time.sleep(0.1)
-                if (time.time() - stime) >= overall_time_in_seconds:
-                    self.stop_event.set()
-                    print("Time is up!")
-                    break
 
             # Send a close frame and close the WebSocket gracefully
             print('Sending WebSocket close frame.')
@@ -296,7 +302,7 @@ class RealtimeAssistant:
                 except Exception as e:
                     print(f'Error closing WebSocket connection: {e}')
 
-    def run(self, instruction, overall_time_in_seconds):
+    def run(self, instruction, user_time_in_seconds):
         p = pyaudio.PyAudio()
 
         mic_stream = p.open(
@@ -321,7 +327,7 @@ class RealtimeAssistant:
             mic_stream.start_stream()
             speaker_stream.start_stream()
 
-            self.connect_to_openai(instruction, overall_time_in_seconds)
+            self.connect_to_openai(instruction, user_time_in_seconds)
 
         except KeyboardInterrupt:
             print('Gracefully shutting down...')
