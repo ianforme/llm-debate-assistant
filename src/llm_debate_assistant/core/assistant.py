@@ -99,7 +99,7 @@ class DebateAssistant:
             example_card_prompt(argument, warrant, evidence_needed, topic, side),
             structured_output=Examples,
             tools=[{"type": "web_search"}],
-            reasoning={"effort": "low"},
+            reasoning={"effort": "medium"},
         )
         return data["evidences"]
 

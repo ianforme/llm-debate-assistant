@@ -159,7 +159,7 @@ def _render_outline_side(opening_statement_obj, outline_obj):
 
         # ## 定义
         st.markdown("### 1.1 定义")
-        defs = _get(outline_obj, "keywords_definition", [])
+        defs = _get(outline_obj, "keywords_definitions", [])
         if not defs:
             st.markdown("无定义")
         else:
@@ -262,11 +262,11 @@ with prep_tab:
     with st.form("prep_form"):
         topic = st.text_input(
             '**辩题**',
-            value="人工智能的广泛应用是/否会加剧教育不平等",
-            placeholder="人工智能的广泛应用是/否会加剧教育不平等",
+            value="死刑应该/不应该被废除",
+            placeholder="死刑应该/不应该被废除",
         )
-        side = st.pills("持方", ['正方', '反方'], selection_mode="single")
-        style_card = st.pills("语言风格", ['六侠-gemini', '小霸王-gemini'], selection_mode="single")
+        side = st.pills("**持方**", ['正方', '反方'], selection_mode="single", default='正方')
+        style_card = st.pills("**语言风格**", ['六侠-gemini', '小霸王-gemini'], selection_mode="single", default='六侠-gemini')
         if style_card == '六侠-gemini':
             style = gemini_ys_style
         else:
@@ -281,7 +281,7 @@ with prep_tab:
         st.session_state.opening_statement_logs = []
         def _os_status_cb(msg):
             st.session_state.opening_statement_logs.append(str(msg))
-            os_status_area.code("".join(st.session_state.opening_statement_logs.prep_logs[-200:]), language="text")
+            os_status_area.code("".join(st.session_state.opening_statement_logs[-200:]), language="text")
 
         with st.spinner(f"正在为{side}生成立论并检索证据……"):
             try:
@@ -293,7 +293,7 @@ with prep_tab:
                 )
                 
                 st.success("立论准备完成。")
-                statement, outline = result["opening_statement"], result["outline"]
+                statement, outline = result[0], result[1]
                 _render_outline_side(statement, outline)
 
             except Exception as e:
@@ -302,19 +302,17 @@ with prep_tab:
 with evidence_search_tab:
     st.subheader("论据搜索")
 
-    with st.container(border=True):  
-        st.markdown("**所需论据背景**")
-        with st.form("prep_form_2"):
-            topic = st.text_input(
-                '**辩题**',
-                value="台湾应废除私人移工中介制度",
-                placeholder="台湾应废除私人移工中介制度",
-            )
-            side = st.pills("**持方**", ['正方', '反方'], selection_mode="single")
-            evidence_needed = st.text_area("**所需资料描述**")
-            argument = st.text_area("**论点（选填）**")
-            warrant = st.text_area("**论证（选填）**")            
-            submitted = st.form_submit_button(f"**开始搜寻论据**", type="primary")
+    with st.form("prep_form_2"):
+        topic = st.text_input(
+            '**辩题**',
+            value="台湾应废除私人移工中介制度",
+            placeholder="台湾应废除私人移工中介制度",
+        )
+        side = st.pills("**持方**", ['正方', '反方'], selection_mode="single", default='正方')
+        evidence_needed = st.text_area("**所需资料描述**")
+        argument = st.text_area("**论点（选填）**")
+        warrant = st.text_area("**论证（选填）**")            
+        submitted = st.form_submit_button(f"**开始搜寻论据**", type="primary")
 
     if submitted:
         with st.spinner():
@@ -343,10 +341,10 @@ with oregon_interrogation_tab:
                 value="台湾应废除私人移工中介制度",
                 placeholder="台湾应废除私人移工中介制度",
             )
-            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single")
+            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
             assistant_statement = st.text_area("**AI立论**")
             assistant_examples = st.text_area("**AI使用的论据**")
-            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240)
+            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
             submitted = st.form_submit_button(f"**开始质询AI**", type="primary")
 
     if submitted:
@@ -366,7 +364,7 @@ with oregon_interrogation_tab:
                 status_cb=_ore_interrogation_status_cb
             )
 
-        judge_feedback, speech_history = result["judge_feedback"], result["speech_history"]
+        judge_feedback, speech_history = result[0], result[1]
 
         _render_chat_history(speech_history)
         _render_comments(judge_feedback)
@@ -382,11 +380,11 @@ with crossfire_table:
                 value="台湾应废除私人移工中介制度",
                 placeholder="台湾应废除私人移工中介制度",
             )
-            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single")
+            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
             assistant_statement = st.text_area("**AI立论**")
             proposed_attacks = st.text_area("**AI对辩战场 - 选填，设定过后AI将大概率使用这些战场/例子进行对辩**")
             human_statement = st.text_area("**用户立论**")
-            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240)
+            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
             submitted = st.form_submit_button(f"**开始对辩**", type="primary")
 
     if submitted:
@@ -407,7 +405,7 @@ with crossfire_table:
                 proposed_attacks=proposed_attacks
             )
 
-        judge_feedback, speech_history = result["judge_feedback"], result["speech_history"]
+        judge_feedback, speech_history = result[0], result[1]
 
         _render_chat_history(speech_history)
         _render_comments(judge_feedback)
@@ -423,9 +421,9 @@ with interrogation_tab:
                 value="台湾应废除私人移工中介制度",
                 placeholder="台湾应废除私人移工中介制度",
             )
-            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single")
+            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
             assistant_statement = st.text_area("**AI立论**")
-            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240)
+            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
             submitted = st.form_submit_button(f"**开始质询AI**", type="primary")
 
     if submitted:
@@ -444,7 +442,7 @@ with interrogation_tab:
                 status_cb=_interrogation_status_cb
             )
 
-        judge_feedback, speech_history = result["judge_feedback"], result["speech_history"]
+        judge_feedback, speech_history = result[0], result[1]
 
         _render_chat_history(speech_history)
         _render_comments(judge_feedback)
@@ -460,11 +458,11 @@ with interrogated_tab:
                 value="台湾应废除私人移工中介制度",
                 placeholder="台湾应废除私人移工中介制度",
             )
-            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single")
+            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
             assistant_statement = st.text_area("**AI立论**")
             proposed_attacks = st.text_area("**AI质询战场 - 选填，设定过后AI将大概率使用这些战场/例子进行质询**")
             human_statement = st.text_area("**用户立论**")
-            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240)
+            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
             submitted = st.form_submit_button(f"**开始接AI质询**", type="primary")
 
     if submitted:
@@ -485,7 +483,7 @@ with interrogated_tab:
                 proposed_attacks=proposed_attacks
             )
 
-        judge_feedback, speech_history = result["judge_feedback"], result["speech_history"]
+        judge_feedback, speech_history = result[0], result[1]
 
         _render_chat_history(speech_history)
         _render_comments(judge_feedback)
