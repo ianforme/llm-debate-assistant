@@ -33,7 +33,5 @@ class AppConfig:
     api_keys: ApiKeys = field(default_factory=ApiKeys)
     run_config: RunConfig = field(default_factory=RunConfig)
     realtime_config: RealtimeConfig = field(default_factory=RealtimeConfig)
-    is_demo: bool = True
-
 
 app_config = AppConfig()

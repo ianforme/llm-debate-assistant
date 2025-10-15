@@ -106,7 +106,7 @@ class RealtimeAssistant:
                         # Now handle valid JSON messages only
                         message = json.loads(message)
                         event_type = message['type']
-                        print(f'⚡️ Received WebSocket event: {event_type}')
+                        # print(f'⚡️ Received WebSocket event: {event_type}')
 
                         if event_type == 'session.created':
                             self.send_fc_session_update(ws)
@@ -120,7 +120,7 @@ class RealtimeAssistant:
                         elif event_type == 'response.audio.delta':
                             audio_content = base64.b64decode(message['delta'])
                             self.audio_buffer.extend(audio_content)
-                            print(f'🔵 Received {len(audio_content)} bytes, total buffer size: {len(self.audio_buffer)}')
+                            # print(f'🔵 Received {len(audio_content)} bytes, total buffer size: {len(self.audio_buffer)}')
 
                         elif event_type == 'input_audio_buffer.speech_started':
                             print('🔵 Speech started, clearing buffer and stopping playback.')
@@ -337,11 +337,7 @@ class RealtimeAssistant:
 
         finally:
             # get the conversation history as output
-            if ai_start_first:
-                convo_history = [x for pair in zip(self.assistant_speeches, self.human_speeches) for x in pair]
-            else:
-                convo_history = [x for pair in zip(self.human_speeches, self.assistant_speeches) for x in pair]
-
+            convo_history = [x for pair in zip(self.assistant_speeches, self.human_speeches) for x in pair]
             mic_stream.stop_stream()
             mic_stream.close()
             speaker_stream.stop_stream()
@@ -352,7 +348,7 @@ class RealtimeAssistant:
             self.mic_queue = queue.Queue()
             self.stop_event = threading.Event()
 
-            self.mic_active = app_config.realtime_config.mic_active
+            self.mic_active = None
 
             self.is_playing = False
             self.assistant_speeches = []
