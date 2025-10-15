@@ -99,7 +99,7 @@ class DebateAssistant:
             example_card_prompt(argument, warrant, evidence_needed, topic, side),
             structured_output=Examples,
             tools=[{"type": "web_search"}],
-            reasoning={"effort": "low"},
+            reasoning={"effort": "medium"},
         )
         return data["evidences"]
 
@@ -147,6 +147,47 @@ class DebateAssistant:
             rebuttal_statement_prompt(topic, side, match_history, debate_outline, minutes),
             reasoning = {'effort': 'medium'},
         )
+    
+    def sequential_fetch_evidences(
+            self, debate_outline: Dict[str, Any], topic: str, side: str
+    ):  
+        results = []
+        for arg_card in debate_outline["arguments"]:
+            argument = arg_card['argument']
+            warrant = arg_card['warrant']
+            evidence_needed = ';'.join(arg_card['evidence_needed'])
+            results.append(
+                (
+                    argument, 
+                    warrant, 
+                    self.search_for_evidence(
+                        argument,
+                        warrant,
+                        evidence_needed,
+                        topic,
+                        side
+                    )
+                )
+            )
+
+        arguments = []
+        for argument, warrant, evidences in results:
+            if (len(arguments) == 0) or (
+                argument not in [arg["argument"] for arg in arguments]
+            ):
+                new_arg = {
+                    "argument": argument,
+                    "warrant": warrant,
+                    "evidences": evidences,
+                }
+                arguments.append(new_arg)
+            else:
+                for exist_arg in arguments:
+                    if exist_arg["argument"] == argument:
+                        exist_arg["evidences"].extend(evidences)
+
+        debate_outline["arguments"] = arguments
+        return debate_outline
     
     async def parallel_fetch_evidences(
         self, debate_outline: Dict[str, Any], topic: str, side: str

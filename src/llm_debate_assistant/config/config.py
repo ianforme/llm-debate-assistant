@@ -25,8 +25,6 @@ class RealtimeConfig:
     CHUNK_SIZE: int = 1024
     RATE: int = 24000
     FORMAT = pyaudio.paInt16   
-    mic_active: bool = None
-    REENGAGE_DELAY_MS: int = 500
     temperature: float = 0.6
     max_response_token: int = 4096
 
@@ -35,7 +33,5 @@ class AppConfig:
     api_keys: ApiKeys = field(default_factory=ApiKeys)
     run_config: RunConfig = field(default_factory=RunConfig)
     realtime_config: RealtimeConfig = field(default_factory=RealtimeConfig)
-    is_demo: bool = True
-
 
 app_config = AppConfig()

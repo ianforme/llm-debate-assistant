@@ -1,63 +1,102 @@
 # app.py
 import asyncio
-from typing import Any, Dict, List, Tuple
+import streamlit as st
 import math
 import html
-import streamlit as st
 
-# =====================
-# 基础设置
-# =====================
-st.set_page_config(page_title="竞技辩论助手", page_icon="🤖", layout="wide")
-st.title("🤖 大语言模型辩论备赛助手")
-st.caption("准备正反双方的框架，立论，自动搜寻论据，并一键模拟整场比赛（含评审裁决）。")
-st.caption("*Powered by OpenAI GPT 5*")
+from llm_debate_assistant.utils.style_cards import gemini_xbw_style, gemini_ys_style
+from llm_debate_assistant.core.assistant import DebateAssistant
+from llm_debate_assistant.core.realtime_assistant import RealtimeAssistant
+from llm_debate_assistant.core.orchestrator import DebateOrchestrator
+
+orchestrator = DebateOrchestrator(
+    assistant=DebateAssistant(), 
+    realtime_assistant=RealtimeAssistant()
+)
+
+st.set_page_config(page_title="AI辩论备赛与训练助手", page_icon="🤖", layout="wide")
+st.title("🤖 AI辩论备赛与训练助手")
+st.caption("*Powered by OpenAI GPT-5 & Realtime API*")
 
 st.markdown("""
 <style>
-  /* 聊天气泡布局 */
-  .chat-row { display: flex; margin: 10px 0; }
-  .chat-left  { justify-content: flex-start; }
-  .chat-right { justify-content: flex-end; }
+.chat-container {
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+}
 
-  .bubble {
-    max-width: 80%;
+/* 行布局 */
+.chat-row {
+    display: flex;
+    margin: 8px 0;
+}
+
+/* 左右对齐 */
+.chat-left  { justify-content: flex-start; }
+.chat-right { justify-content: flex-end; }
+
+/* 气泡样式 */
+.bubble {
+    max-width: 75%;
     padding: 10px 14px;
     border-radius: 14px;
     line-height: 1.6;
     word-wrap: break-word;
     white-space: pre-wrap;
-  }
-  /* 左(正方) / 右(反方) 颜色与边框 */
-  .bubble-left  { background:#eef5ff; border:1px solid #cfe0ff; border-top-left-radius: 4px; }
-  .bubble-right { background:#ffeef0; border:1px solid #ffd0d6; border-top-right-radius: 4px; }
+    box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
+    font-size: 15px;
+}
 
-  /* 环节名 */
-  .stage {
-    font-size: 12px;
-    opacity: .75;
-    margin-bottom: 4px;
-  }
+/* AI（左侧） */
+.bubble-left {
+    background: #eef5ff;
+    border: 1px solid #cfe0ff;
+    border-top-left-radius: 4px;
+}
+
+/* 用户（右侧） */
+.bubble-right {
+    background: #fff0f0;
+    border: 1px solid #ffd1d1;
+    border-top-right-radius: 4px;
+}
+            
+.comment-card {
+    background-color: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+    padding: 18px 20px;
+    margin-bottom: 15px;
+    transition: 0.3s;
+    border-left: 6px solid #4a90e2;
+}
+.comment-card:hover {
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.15);
+}
+.score-badge {
+    background-color: #4a90e2;
+    color: white;
+    font-weight: bold;
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: inline-block;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+.feedback-text {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #333;
+}
 </style>
 """, unsafe_allow_html=True)
 
 
-# =====================
-# 业务函数导入（保持原逻辑）
-# =====================
-try:
-    from main import match_preparation, simulate_match  # async functions
-except Exception as e:
-    st.error(
-        "Failed to import functions from main.py. Make sure app.py is in the same folder as main.py.\n\nError: "
-        + str(e)
-    )
-    st.stop()
-
-# =====================
-# 工具函数（仅UI/健壮性相关）
-# =====================
-def _get(obj: Any, key: str, default: Any = ""):
+def _get(obj, key, default = ""):
     """同时兼容 pydantic model 与 dict 的字段访问。"""
     if obj is None:
         return default
@@ -67,25 +106,16 @@ def _get(obj: Any, key: str, default: Any = ""):
         return obj.get(key, default)
     return default
 
-def _chunk_list(items: List[Any], n_cols: int) -> List[List[Any]]:
+def _chunk_list(items, n_cols):
     if not items:
         return []
     n_rows = math.ceil(len(items) / n_cols)
     return [items[i * n_cols : (i + 1) * n_cols] for i in range(n_rows)]
 
-def _esc(s: Any) -> str:
+def _esc(s):
     return html.escape("" if s is None else str(s))
 
-def _p(s: Any) -> str:
-    """段落HTML（保留换行）"""
-    text = _esc(s)
-    return f"<p>{text.replace('\\n', '<br/>')}</p>" if text else "<span class='tiny-muted'>（无内容）</span>"
-
-def _ul(items: List[str]) -> str:
-    safe = [f"<li>{_esc(x)}</li>" for x in items if str(x).strip()]
-    return f"<ul>{''.join(safe)}</ul>" if safe else "<span class='tiny-muted'>（无数据）</span>"
-
-def _status_box(title: str, key_: str):
+def _status_box(title, key_):
     box = st.container(border=True)
     with box:
         st.markdown(f"**{title}**")
@@ -95,7 +125,7 @@ def _status_box(title: str, key_: str):
             area.code("".join(logs[-200:]), language="text")
     return area
 
-def _render_evidence_card(card: Any):
+def _render_evidence_card(card):
     title = _get(card, "title", "未命名证据")
     url = _get(card, "url", "")
     keypoints = _get(card, "keypoints", [])
@@ -112,17 +142,16 @@ def _render_evidence_card(card: Any):
         if keypoints:
             if isinstance(keypoints, str): 
                 keypoints = [keypoints]
-            st.markdown("\n".join([f"- {k}" for k in keypoints if str(k).strip()]))
+            st.markdown("\n".join([f"- {_esc(k)}" for k in keypoints if str(k).strip()]))
 
         if original:
             if isinstance(original, str): 
                 original = [original]
             with st.expander("查看原文摘录"):
-                st.markdown("\n".join([f"- {og}" for og in original if str(og).strip()]))
+                st.markdown("\n".join([f"- {_esc(og)}" for og in original if str(og).strip()]))
 
 
-def _render_outline_side(side_name: str, opening_statement_obj: Any, outline_obj: Any):
-    """整体区域用统一背景色，内部保持层级结构"""
+def _render_outline_side(opening_statement_obj, outline_obj):
     with st.container(border=True):
 
         # # 准备大纲
@@ -130,7 +159,7 @@ def _render_outline_side(side_name: str, opening_statement_obj: Any, outline_obj
 
         # ## 定义
         st.markdown("### 1.1 定义")
-        defs = _get(outline_obj, "keywords_definition", [])
+        defs = _get(outline_obj, "keywords_definitions", [])
         if not defs:
             st.markdown("无定义")
         else:
@@ -175,288 +204,289 @@ def _render_outline_side(side_name: str, opening_statement_obj: Any, outline_obj
         opening_text = _get(opening_statement_obj, "opening_statement") or str(opening_statement_obj or "")
         st.write(opening_text if opening_text else "（无内容）")
 
+def _render_chat_history(history):
+    with st.container(border=True):  
+        st.markdown("**对话历史**")
+        # ===== 展示部分 =====
+        for msg in history:
+            msg = msg.strip()
+            if msg.startswith("AI助手:"):
+                text = html.escape(msg[6:])
+                st.markdown(f"""
+                <div class="chat-row chat-left">
+                    <div class="bubble bubble-left">
+                        🤖 <b>AI</b><br>{text}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            elif msg.startswith("用户:"):
+                text = html.escape(msg[4:])
+                st.markdown(f"""
+                <div class="chat-row chat-right">
+                    <div class="bubble bubble-right">
+                        👤 <b>你</b><br>{text}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
-# =====================
+        st.markdown("</div>", unsafe_allow_html=True)
+
+def _render_comments(comment):
+    with st.container(border=True):  
+        st.markdown("**AI教练打分**")
+        st.markdown(f"""
+        <div class="comment-card">
+            <div class="score-badge">评分：{comment["score"]} / 100</div><br>
+            <div class="feedback-text">{comment["feedback"]}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
 # Session State 初始化（保持原键名与逻辑）
-# =====================
-if "prep" not in st.session_state:
-    st.session_state.prep = None
-if "topic" not in st.session_state:
-    st.session_state.topic = ""
-if "llm_as_judge" not in st.session_state:
-    st.session_state.llm_as_judge = True
-if "match_result" not in st.session_state:
-    st.session_state.match_result = None
-if "prep_logs" not in st.session_state:
-    st.session_state.prep_logs = []
-if "sim_logs" not in st.session_state:
-    st.session_state.sim_logs = []
-if "stage_ptr" not in st.session_state:
-    st.session_state.stage_ptr = -1  # -1 表示尚未开始展示
+if "opening_statement_logs" not in st.session_state:
+    st.session_state.opening_statement_logs = []
+if "oregon_interrogation_logs" not in st.session_state:
+    st.session_state.oregon_interrogation_logs = []
+if "interrogation_logs" not in st.session_state:
+    st.session_state.interrogation_logs = []
+if "interrogated_logs" not in st.session_state:
+    st.session_state.interrogated_logs = []
+if "crossfire_logs" not in st.session_state:
+    st.session_state.crossfire_logs = []
 
-# =====================
-# 页面结构：两个 Tab
-# =====================
-prep_tab, simulate_tab = st.tabs(["赛前准备", "比赛模拟"])
+# 页面结构：6个 Tab
+prep_tab, evidence_search_tab, oregon_interrogation_tab, crossfire_table, interrogation_tab, interrogated_tab = st.tabs(["立论准备", "论据搜索", "奥瑞冈质询练习", "对辩练习", "质询练习", "被质询练习"])
 
-# =====================
-# Tab1：赛前准备（严格对齐）
-# =====================
 with prep_tab:
-    st.subheader("赛前准备")
-
+    st.subheader("立论准备")
+    
     with st.form("prep_form"):
         topic = st.text_input(
             '**辩题**',
-            value=st.session_state.topic,
-            placeholder="应该/不应该废除死刑",
+            value="死刑应该/不应该被废除",
+            placeholder="死刑应该/不应该被废除",
         )
-        llm_as_judge = st.checkbox("赛前阶段启用LLM教练修改立论", value=st.session_state.llm_as_judge)
-        submitted = st.form_submit_button("生成双方立论与证据", type="primary")
+        side = st.pills("**持方**", ['正方', '反方'], selection_mode="single", default='正方')
+        style_card = st.pills("**语言风格**", ['六侠-gemini', '小霸王-gemini'], selection_mode="single", default='六侠-gemini')
+        if style_card == '六侠-gemini':
+            style = gemini_ys_style
+        else:
+            style = gemini_xbw_style
+        submitted = st.form_submit_button(f"搜寻相关论据，生成立论", type="primary")
 
     # 状态区（保持原逻辑）
-    prep_status_area = _status_box("赛前准备状态", "prep_logs")
-
-    def _prep_status_cb(msg: str):
-        st.session_state.prep_logs.append(str(msg))
-        prep_status_area.code("".join(st.session_state.prep_logs[-200:]), language="text")
+    os_status_area = _status_box("立论准备状态", "opening_statement_logs")
 
     # 触发准备（保持原逻辑）
     if submitted:
-        if not topic.strip():
-            st.warning("请先填写辩题。")
-        else:
-            st.session_state.topic = topic.strip()
-            st.session_state.llm_as_judge = bool(llm_as_judge)
-            st.session_state.prep = None
-            st.session_state.match_result = None
-            st.session_state.prep_logs = []
-            st.session_state.stage_ptr = -1  # 重置第二页进度
+        st.session_state.opening_statement_logs = []
+        def _os_status_cb(msg):
+            st.session_state.opening_statement_logs.append(str(msg))
+            os_status_area.code("".join(st.session_state.opening_statement_logs[-200:]), language="text")
 
-            with st.spinner("正在为正反双方生成立论并检索证据……"):
-                try:
-                    result = asyncio.run(
-                        match_preparation(
-                            st.session_state.topic,
-                            st.session_state.llm_as_judge,
-                            status_cb=_prep_status_cb,
-                        )
-                    )
-                except TypeError:
-                    result = asyncio.run(
-                        match_preparation(st.session_state.topic, st.session_state.llm_as_judge)
-                    )
-                except RuntimeError:
-                    try:
-                        result = asyncio.get_event_loop().run_until_complete(
-                            match_preparation(
-                                st.session_state.topic,
-                                st.session_state.llm_as_judge,
-                                status_cb=_prep_status_cb,  # type: ignore
-                            )
-                        )
-                    except TypeError:
-                        result = asyncio.get_event_loop().run_until_complete(
-                            match_preparation(
-                                st.session_state.topic,
-                                st.session_state.llm_as_judge,
-                            )
-                        )
-                except Exception as e:
-                    st.error("match_preparation 失败：" + str(e))
-                    result = None
-
-            st.session_state.prep = result
-
-    # ===== 展示准备结果（对齐结构） =====
-    if st.session_state.prep:
-        st.success("赛前准备完成。")
-
-        prep_res: Dict[str, Any] = st.session_state.prep
-        pro_statement = prep_res.get("正方一辩立论")
-        con_statement = prep_res.get("反方一辩立论")
-        pro_outline = prep_res.get("正方立论框架")
-        con_outline = prep_res.get("反方立论框架")
-
-        # 改成子 tabs
-        subtab_pro, subtab_con = st.tabs(["正方", "反方"])
-        with subtab_pro:
-            _render_outline_side("正方", pro_statement, pro_outline)
-        with subtab_con:
-            _render_outline_side("反方", con_statement, con_outline)
-
-# =====================
-# Tab2：比赛模拟（保留你已有的“对话气泡 + 下一环节”逻辑与UI）
-# =====================
-with simulate_tab:
-    st.subheader("比赛模拟")
-
-    if not st.session_state.prep:
-        st.info("请先在“赛前准备”页完成准备后再进行模拟。")
-        st.stop()
-
-    st.markdown(f"**辩题：** {st.session_state.topic}")
-
-    # 状态区（保持原逻辑）
-    sim_status_area = _status_box("比赛模拟状态", "sim_logs")
-
-    def _sim_status_cb(msg: str):
-        st.session_state.sim_logs.append(str(msg))
-        sim_status_area.code("".join(st.session_state.sim_logs[-200:]), language="text")
-
-    # 触发模拟（保持原逻辑）
-    if st.button("开始模拟", type="primary"):
-        st.session_state.match_result = None
-        st.session_state.sim_logs = []
-        st.session_state.stage_ptr = -1
-
-        prep_res: Dict[str, Any] = st.session_state.prep
-        topic = st.session_state.topic
-        pro_statement = prep_res.get("正方一辩立论")
-        con_statement = prep_res.get("反方一辩立论")
-        pro_outline = prep_res.get("正方立论框架")
-        con_outline = prep_res.get("反方立论框架")
-
-        with st.spinner("正在模拟赛程：立论、反驳、陈词与评审裁决……"):
+        with st.spinner(f"正在为{side}生成立论并检索证据……"):
             try:
-                sim = asyncio.run(
-                    simulate_match(
-                        topic,
-                        pro_statement,
-                        pro_outline,
-                        con_statement,
-                        con_outline,
-                        status_cb=_sim_status_cb,
-                    )
+                result = orchestrator.generate_opening_statement_sync(
+                    topic=topic, 
+                    side=side,
+                    style_example=style,
+                    status_cb=_os_status_cb
                 )
-            except TypeError:
-                sim = asyncio.run(
-                    simulate_match(
-                        topic,
-                        pro_statement,
-                        pro_outline,
-                        con_statement,
-                        con_outline,
-                    )
-                )
-            except RuntimeError:
-                try:
-                    sim = asyncio.get_event_loop().run_until_complete(
-                        simulate_match(
-                            topic,
-                            pro_statement,
-                            pro_outline,
-                            con_statement,
-                            con_outline,
-                            status_cb=_sim_status_cb,
-                        )
-                    )
-                except TypeError:
-                    sim = asyncio.get_event_loop().run_until_complete(
-                        simulate_match(
-                            topic,
-                            pro_statement,
-                            pro_outline,
-                            con_statement,
-                            con_outline,
-                        )
-                    )
+                
+                st.success("立论准备完成。")
+                statement, outline = result[0], result[1]
+                _render_outline_side(statement, outline)
+
             except Exception as e:
-                st.error("simulate_match 失败：" + str(e))
-                sim = None
+                st.error("立论准备失败：" + str(e))
 
-        st.session_state.match_result = sim
+with evidence_search_tab:
+    st.subheader("论据搜索")
 
-    # 对话气泡 + 「下一环节」
-    if st.session_state.match_result:
-        sim: Dict[str, Any] = st.session_state.match_result
-        st.success("模拟完成。以下为比赛记录：")
+    with st.form("prep_form_2"):
+        topic = st.text_input(
+            '**辩题**',
+            value="台湾应废除私人移工中介制度",
+            placeholder="台湾应废除私人移工中介制度",
+        )
+        side = st.pills("**持方**", ['正方', '反方'], selection_mode="single", default='正方')
+        evidence_needed = st.text_area("**所需资料描述**")
+        argument = st.text_area("**论点（选填）**")
+        warrant = st.text_area("**论证（选填）**")            
+        submitted = st.form_submit_button(f"**开始搜寻论据**", type="primary")
 
-        stage_order: List[Tuple[str, str]] = [
-            ("正方一辩立论", str(_get(sim, "正方一辩立论", sim.get("正方一辩立论", "")))),
-            ("反方一辩立论", str(_get(sim, "反方一辩立论", sim.get("反方一辩立论", "")))),
-            ("正方二辩反驳", str(sim.get("正方二辩反驳", ""))),
-            ("反方二辩反驳", str(sim.get("反方二辩反驳", ""))),
-            ("正方三辩陈词", str(sim.get("正方三辩陈词", ""))),
-            ("反方三辩陈词", str(sim.get("反方三辩陈词", ""))),
-            ("反方四辩结辩", str(sim.get("反方四辩结辩", ""))),
-            ("正方四辩结辩", str(sim.get("正方四辩结辩", ""))),
-            ("评审意见", ""),
-        ]
+    if submitted:
+        with st.spinner():
+            result = orchestrator.assistant.search_for_evidence(
+                topic=topic, 
+                side=side,
+                argument=argument,
+                warrant=warrant,
+                evidence_needed=evidence_needed,
+            )
+        
+        rows = _chunk_list(result, 3)
+        for row in rows:
+            cols = st.columns(3)
+            for col, card in zip(cols, row):
+                with col:
+                    _render_evidence_card(card)
+        
+with oregon_interrogation_tab:
+    st.subheader("奥瑞冈质询练习")
+    with st.container(border=True):  
+        st.markdown("**质询环节设定**")
+        with st.form("prep_form_3"):
+            topic = st.text_input(
+                '**辩题**',
+                value="台湾应废除私人移工中介制度",
+                placeholder="台湾应废除私人移工中介制度",
+            )
+            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
+            assistant_statement = st.text_area("**AI立论**")
+            assistant_examples = st.text_area("**AI使用的论据**")
+            assistant_baseline = st.text_area("**AI攻防底线**")
+            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
+            submitted = st.form_submit_button(f"**开始质询AI**", type="primary")
 
-        # 初始化指针
-        if st.session_state.stage_ptr == -1 and stage_order:
-            st.session_state.stage_ptr = 0
+    if submitted:
+        st.session_state.oregon_interrogation_logs = []
+        def _ore_interrogation_status_cb(msg):
+            st.session_state.oregon_interrogation_logs.append(str(msg))
+            ore_interrogation_status_area.code("".join(st.session_state.oregon_interrogation_logs[-200:]), language="text")
+        ore_interrogation_status_area = _status_box("奥瑞冈质询状态", "oregon_interrogation_logs")
+        
+        with st.spinner():
+            result = orchestrator.oregon_interrogation_practice(
+                topic=topic, 
+                assistant_side=assistant_side,
+                assistant_statement=assistant_statement,
+                assistant_baseline=assistant_baseline,
+                assistant_examples=assistant_examples,
+                user_time_in_seconds=user_time_in_seconds,
+                status_cb=_ore_interrogation_status_cb
+            )
 
-        max_idx = min(st.session_state.stage_ptr, len(stage_order) - 1)
+        judge_feedback, speech_history = result[0], result[1]
 
-        # --- 聊天容器在上，按钮容器在最下 ---
-        chat_container = st.container()
-        with chat_container:
+        _render_chat_history(speech_history)
+        _render_comments(judge_feedback)
 
-            def chat(role: str, stage_name: str, text: str):
-                # 判断左右
-                is_pro = role.startswith("正方")
-                is_con = role.startswith("反方")
 
-                if role == "评审意见":
-                    # 裁判：居中用系统消息风格（沿用原有 st.chat_message 以保留你的样式）
-                    with st.chat_message(name="评审", avatar="⚖️"):
-                        st.subheader("最终裁决与评语")
-                        st.write(text if text else "（无可显示内容）")
-                    return
+with crossfire_table:
+    st.subheader("对辩练习")
+    with st.container(border=True):  
+        st.markdown("**对辩环节设定**")
+        with st.form("prep_form_4"):
+            topic = st.text_input(
+                '**辩题**',
+                value="台湾应废除私人移工中介制度",
+                placeholder="台湾应废除私人移工中介制度",
+            )
+            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
+            assistant_statement = st.text_area("**AI立论**")
+            proposed_attacks = st.text_area("**AI对辩战场 - 选填，设定过后AI将大概率使用这些战场/例子进行对辩**")
+            human_statement = st.text_area("**用户立论**")
+            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
+            submitted = st.form_submit_button(f"**开始对辩**", type="primary")
 
-                row_class = "chat-row " + ("chat-left" if is_pro else "chat-right")
-                bubble_class = "bubble " + ("bubble-left" if is_pro else "bubble-right")
-                # 逃逸文本
-                safe_text = _esc(text) if text else "（无可显示内容）"
+    if submitted:
+        st.session_state.crossfire_logs = []
+        def _crossfire_status_cb(msg):
+            st.session_state.crossfire_logs.append(str(msg))
+            crossfire_status_area.code("".join(st.session_state.crossfire_logs[-200:]), language="text")
+        crossfire_status_area = _status_box("对辩状态", "crossfire_logs")
+        
+        with st.spinner():
+            result = orchestrator.rebuttal_crossfire_practice(
+                topic=topic, 
+                assistant_side=assistant_side,
+                assistant_statement=assistant_statement,
+                human_statement=human_statement,
+                user_time_in_seconds=user_time_in_seconds,
+                status_cb=_crossfire_status_cb,
+                proposed_attacks=proposed_attacks
+            )
 
-                st.markdown(
-                    f"""
-                    <div class="{row_class}">
-                      <div class="{bubble_class}">
-                        <div><b>【{_esc(stage_name)}】</b></div>
-                        <div>{safe_text}</div>
-                      </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+        judge_feedback, speech_history = result[0], result[1]
 
-            # 逐条渲染到当前指针
-            for i in range(0, max_idx + 1):
-                stage_name, text = stage_order[i]
-                if stage_name != "评审意见":
-                    # 用环节名称判断角色（用于左右对齐）
-                    role = "正方" if stage_name.startswith("正方") else ("反方" if stage_name.startswith("反方") else "其他")
-                    chat(role, stage_name, text)
-                else:
-                    judge_fb = sim.get("评审意见")
-                    # 评审内容继续保留你原先的结构
-                    with st.chat_message(name="评审", avatar="⚖️"):
-                        st.subheader("最终裁决与评语")
-                        st.write(str(_get(judge_fb, "feedback", judge_fb)))
-                        pro_score = _get(judge_fb, "pro_score", None)
-                        con_score = _get(judge_fb, "con_score", None)
-                        m1, m2 = st.columns(2)
-                        with m1:
-                            st.metric("正方得分", pro_score if pro_score is not None else "-")
-                        with m2:
-                            st.metric("反方得分", con_score if con_score is not None else "-")
+        _render_chat_history(speech_history)
+        _render_comments(judge_feedback)
 
-        # --- 控制按钮固定在最下方 ---
-        btn_container = st.container()
-        with btn_container:
-            st.divider()
-            bc1, bc2, bc3 = st.columns(3)
-            with bc1:
-                if st.button("🔁 重置到开头"):
-                    st.session_state.stage_ptr = -1
-            with bc2:
-                if st.button("📜 一次展示全部"):
-                    st.session_state.stage_ptr = len(stage_order) - 1
-            with bc3:
-                if st.button("➡️ 下一环节"):
-                    if st.session_state.stage_ptr < len(stage_order) - 1:
-                        st.session_state.stage_ptr += 1
 
+with interrogation_tab:
+    st.subheader("质询练习")
+    with st.container(border=True):  
+        st.markdown("**质询环节设定**")
+        with st.form("prep_form_5"):
+            topic = st.text_input(
+                '**辩题**',
+                value="台湾应废除私人移工中介制度",
+                placeholder="台湾应废除私人移工中介制度",
+            )
+            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
+            assistant_statement = st.text_area("**AI立论**")
+            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
+            submitted = st.form_submit_button(f"**开始质询AI**", type="primary")
+
+    if submitted:
+        st.session_state.interrogation_logs = []
+        def _interrogation_status_cb(msg):
+            st.session_state.interrogation_logs.append(str(msg))
+            interrogation_status_area.code("".join(st.session_state.interrogation_logs[-200:]), language="text")
+        interrogation_status_area = _status_box("质询状态", "interrogation_logs")
+        
+        with st.spinner():
+            result = orchestrator.rebuttal_interrogation_practice(
+                topic=topic, 
+                assistant_side=assistant_side,
+                assistant_statement=assistant_statement,
+                user_time_in_seconds=user_time_in_seconds,
+                status_cb=_interrogation_status_cb
+            )
+
+        judge_feedback, speech_history = result[0], result[1]
+
+        _render_chat_history(speech_history)
+        _render_comments(judge_feedback)
+
+
+with interrogated_tab:
+    st.subheader("接质询练习")
+    with st.container(border=True):  
+        st.markdown("**质询环节设定**")
+        with st.form("prep_form_6"):
+            topic = st.text_input(
+                '**辩题**',
+                value="台湾应废除私人移工中介制度",
+                placeholder="台湾应废除私人移工中介制度",
+            )
+            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
+            assistant_statement = st.text_area("**AI立论**")
+            proposed_attacks = st.text_area("**AI质询战场 - 选填，设定过后AI将大概率使用这些战场/例子进行质询**")
+            human_statement = st.text_area("**用户立论**")
+            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
+            submitted = st.form_submit_button(f"**开始接AI质询**", type="primary")
+
+    if submitted:
+        st.session_state.interrogated_logs = []
+        def _interrogated_status_cb(msg):
+            st.session_state.interrogated_logs.append(str(msg))
+            interrogated_status_area.code("".join(st.session_state.interrogated_logs[-200:]), language="text")
+        interrogated_status_area = _status_box("接质询状态", "interrogated_logs")
+        
+        with st.spinner():
+            result = orchestrator.rebuttal_interrogated_practice(
+                topic=topic, 
+                assistant_side=assistant_side,
+                assistant_statement=assistant_statement,
+                human_statement=human_statement,
+                user_time_in_seconds=user_time_in_seconds,
+                status_cb=_interrogated_status_cb,
+                proposed_attacks=proposed_attacks
+            )
+
+        judge_feedback, speech_history = result[0], result[1]
+
+        _render_chat_history(speech_history)
+        _render_comments(judge_feedback)
+        

@@ -50,4 +50,5 @@ def exchange_comment_prompts(debate_history, topic):
 - 输出必须包含：  
   1. `score`: [0-100]
   2. `feedback`: 对于用户的表现做出评价，并给出具有可行性的建议
+- `feedback`部分会被用于HTML input，所以必须使用html 的模式输出
 """

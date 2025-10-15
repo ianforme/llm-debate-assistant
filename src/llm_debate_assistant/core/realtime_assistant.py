@@ -12,7 +12,7 @@ from llm_debate_assistant.config import app_config
 
 class RealtimeAssistant:
     def __init__(self, 
-                 ws_url='wss://api.openai.com/v1/realtime?model=gpt-realtime-mini-2025-10-06'):
+                 ws_url='wss://api.openai.com/v1/realtime?model=gpt-realtime'):
 
         self.temperature = app_config.realtime_config.temperature
         self.max_response_token = app_config.realtime_config.max_response_token
@@ -30,8 +30,7 @@ class RealtimeAssistant:
         self.RATE = app_config.realtime_config.RATE
         self.FORMAT = app_config.realtime_config.FORMAT
 
-        self.mic_active = app_config.realtime_config.mic_active
-        self.REENGAGE_DELAY_MS = app_config.realtime_config.REENGAGE_DELAY_MS
+        self.mic_active = None
 
         self.is_playing = False
         self.assistant_speeches = []
@@ -107,12 +106,12 @@ class RealtimeAssistant:
                         # Now handle valid JSON messages only
                         message = json.loads(message)
                         event_type = message['type']
-                        print(f'⚡️ Received WebSocket event: {event_type}')
+                        # print(f'⚡️ Received WebSocket event: {event_type}')
 
                         if event_type == 'session.created':
                             self.send_fc_session_update(ws)
 
-                            # if AI needs to speek first
+                            # if AI needs to speak first
                             self.start_conversation(ws, instruction, ai_start_first)
 
                         elif event_type == 'error':
@@ -121,7 +120,7 @@ class RealtimeAssistant:
                         elif event_type == 'response.audio.delta':
                             audio_content = base64.b64decode(message['delta'])
                             self.audio_buffer.extend(audio_content)
-                            print(f'🔵 Received {len(audio_content)} bytes, total buffer size: {len(self.audio_buffer)}')
+                            # print(f'🔵 Received {len(audio_content)} bytes, total buffer size: {len(self.audio_buffer)}')
 
                         elif event_type == 'input_audio_buffer.speech_started':
                             print('🔵 Speech started, clearing buffer and stopping playback.')
@@ -338,11 +337,7 @@ class RealtimeAssistant:
 
         finally:
             # get the conversation history as output
-            if ai_start_first:
-                convo_history = [x for pair in zip(self.assistant_speeches, self.human_speeches) for x in pair]
-            else:
-                convo_history = [x for pair in zip(self.human_speeches, self.assistant_speeches) for x in pair]
-
+            convo_history = [x for pair in zip(self.assistant_speeches, self.human_speeches) for x in pair]
             mic_stream.stop_stream()
             mic_stream.close()
             speaker_stream.stop_stream()
@@ -353,7 +348,7 @@ class RealtimeAssistant:
             self.mic_queue = queue.Queue()
             self.stop_event = threading.Event()
 
-            self.mic_active = app_config.realtime_config.mic_active
+            self.mic_active = None
 
             self.is_playing = False
             self.assistant_speeches = []
