@@ -344,6 +344,7 @@ with oregon_interrogation_tab:
             assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
             assistant_statement = st.text_area("**AI立论**")
             assistant_examples = st.text_area("**AI使用的论据**")
+            assistant_baseline = st.text_area("**AI攻防底线**")
             user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
             submitted = st.form_submit_button(f"**开始质询AI**", type="primary")
 
@@ -359,6 +360,7 @@ with oregon_interrogation_tab:
                 topic=topic, 
                 assistant_side=assistant_side,
                 assistant_statement=assistant_statement,
+                assistant_baseline=assistant_baseline,
                 assistant_examples=assistant_examples,
                 user_time_in_seconds=user_time_in_seconds,
                 status_cb=_ore_interrogation_status_cb

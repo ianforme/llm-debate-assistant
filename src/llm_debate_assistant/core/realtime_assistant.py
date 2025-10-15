@@ -12,7 +12,7 @@ from llm_debate_assistant.config import app_config
 
 class RealtimeAssistant:
     def __init__(self, 
-                 ws_url='wss://api.openai.com/v1/realtime?model=gpt-realtime-mini-2025-10-06'):
+                 ws_url='wss://api.openai.com/v1/realtime?model=gpt-realtime'):
 
         self.temperature = app_config.realtime_config.temperature
         self.max_response_token = app_config.realtime_config.max_response_token
