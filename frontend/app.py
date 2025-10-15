@@ -1,10 +1,10 @@
 # app.py
-import streamlit as st
 import asyncio
+import streamlit as st
 import math
 import html
 
-from llm_debate_assistant.templates.style_cards import gemini_xbw_style, gemini_ys_style
+from llm_debate_assistant.utils.style_cards import gemini_xbw_style, gemini_ys_style
 from llm_debate_assistant.core.assistant import DebateAssistant
 from llm_debate_assistant.core.realtime_assistant import RealtimeAssistant
 from llm_debate_assistant.core.orchestrator import DebateOrchestrator
@@ -14,40 +14,9 @@ orchestrator = DebateOrchestrator(
     realtime_assistant=RealtimeAssistant()
 )
 
-# =====================
-# 基础设置
-# =====================
-st.set_page_config(page_title="竞技辩论助手", page_icon="🤖", layout="wide")
-st.title("🤖 大语言模型辩论备赛助手")
+st.set_page_config(page_title="AI辩论备赛与训练助手", page_icon="🤖", layout="wide")
+st.title("🤖 AI辩论备赛与训练助手")
 st.caption("*Powered by OpenAI GPT-5 & Realtime API*")
-
-st.markdown("""
-<style>
-  /* 聊天气泡布局 */
-  .chat-row { display: flex; margin: 10px 0; }
-  .chat-left  { justify-content: flex-start; }
-  .chat-right { justify-content: flex-end; }
-
-  .bubble {
-    max-width: 80%;
-    padding: 10px 14px;
-    border-radius: 14px;
-    line-height: 1.6;
-    word-wrap: break-word;
-    white-space: pre-wrap;
-  }
-  /* 左(正方) / 右(反方) 颜色与边框 */
-  .bubble-left  { background:#eef5ff; border:1px solid #cfe0ff; border-top-left-radius: 4px; }
-  .bubble-right { background:#ffeef0; border:1px solid #ffd0d6; border-top-right-radius: 4px; }
-
-  /* 环节名 */
-  .stage {
-    font-size: 12px;
-    opacity: .75;
-    margin-bottom: 4px;
-  }
-</style>
-""", unsafe_allow_html=True)
 
 st.markdown("""
 <style>
@@ -95,11 +64,7 @@ st.markdown("""
     border: 1px solid #ffd1d1;
     border-top-right-radius: 4px;
 }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("""
-<style>
+            
 .comment-card {
     background-color: #ffffff;
     border-radius: 14px;
@@ -187,7 +152,6 @@ def _render_evidence_card(card):
 
 
 def _render_outline_side(opening_statement_obj, outline_obj):
-    """整体区域用统一背景色，内部保持层级结构"""
     with st.container(border=True):
 
         # # 准备大纲
@@ -277,9 +241,7 @@ def _render_comments(comment):
         </div>
         """, unsafe_allow_html=True)
     
-# =====================
 # Session State 初始化（保持原键名与逻辑）
-# =====================
 if "opening_statement_logs" not in st.session_state:
     st.session_state.opening_statement_logs = []
 if "oregon_interrogation_logs" not in st.session_state:
@@ -291,9 +253,7 @@ if "interrogated_logs" not in st.session_state:
 if "crossfire_logs" not in st.session_state:
     st.session_state.crossfire_logs = []
 
-# =====================
 # 页面结构：6个 Tab
-# =====================
 prep_tab, evidence_search_tab, oregon_interrogation_tab, crossfire_table, interrogation_tab, interrogated_tab = st.tabs(["立论准备", "论据搜索", "奥瑞冈质询练习", "对辩练习", "质询练习", "被质询练习"])
 
 with prep_tab:
@@ -305,7 +265,6 @@ with prep_tab:
             value="人工智能的广泛应用是/否会加剧教育不平等",
             placeholder="人工智能的广泛应用是/否会加剧教育不平等",
         )
-        llm_as_judge = st.checkbox("赛前阶段启用LLM教练修改立论，会显著增加运行速度", value=False)
         side = st.pills("持方", ['正方', '反方'], selection_mode="single")
         style_card = st.pills("语言风格", ['六侠-gemini', '小霸王-gemini'], selection_mode="single")
         if style_card == '六侠-gemini':
@@ -319,32 +278,26 @@ with prep_tab:
 
     # 触发准备（保持原逻辑）
     if submitted:
-        if not topic.strip():
-            st.warning("请先填写辩题。")
-        else:
-            st.session_state.opening_statement_logs = []
-            def _os_status_cb(msg):
-                st.session_state.opening_statement_logs.append(str(msg))
-                os_status_area.code("".join(st.session_state.opening_statement_logs.prep_logs[-200:]), language="text")
+        st.session_state.opening_statement_logs = []
+        def _os_status_cb(msg):
+            st.session_state.opening_statement_logs.append(str(msg))
+            os_status_area.code("".join(st.session_state.opening_statement_logs.prep_logs[-200:]), language="text")
 
-            with st.spinner(f"正在为{side}生成立论并检索证据……"):
-                try:
-                    result = asyncio.run(
-                        orchestrator.generate_opening_statement(
-                            topic=topic,
-                            side=side,
-                            style_example=style,
-                            llm_as_judge=llm_as_judge,
-                            status_cb=_os_status_cb,
-                        )
-                    )
-                    
-                    st.success("立论准备完成。")
-                    statement, outline = result["opening_statement"], result["outline"]
-                    _render_outline_side(statement, outline)
+        with st.spinner(f"正在为{side}生成立论并检索证据……"):
+            try:
+                result = orchestrator.generate_opening_statement_sync(
+                    topic=topic, 
+                    side=side,
+                    style_example=style,
+                    status_cb=_os_status_cb
+                )
+                
+                st.success("立论准备完成。")
+                statement, outline = result["opening_statement"], result["outline"]
+                _render_outline_side(statement, outline)
 
-                except Exception as e:
-                    st.error("立论准备失败：" + str(e))
+            except Exception as e:
+                st.error("立论准备失败：" + str(e))
 
 with evidence_search_tab:
     st.subheader("论据搜索")
@@ -358,9 +311,9 @@ with evidence_search_tab:
                 placeholder="台湾应废除私人移工中介制度",
             )
             side = st.pills("**持方**", ['正方', '反方'], selection_mode="single")
-            argument = st.text_area("**论点**")
-            warrant = st.text_area("**论证**")
             evidence_needed = st.text_area("**所需资料描述**")
+            argument = st.text_area("**论点（选填）**")
+            warrant = st.text_area("**论证（选填）**")            
             submitted = st.form_submit_button(f"**开始搜寻论据**", type="primary")
 
     if submitted:
@@ -431,7 +384,7 @@ with crossfire_table:
             )
             assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single")
             assistant_statement = st.text_area("**AI立论**")
-            proposed_attacks = st.text_area("**AI对辩战场 - 可为空，设定过后AI将大概率使用这些战场/例子进行对辩**")
+            proposed_attacks = st.text_area("**AI对辩战场 - 选填，设定过后AI将大概率使用这些战场/例子进行对辩**")
             human_statement = st.text_area("**用户立论**")
             user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240)
             submitted = st.form_submit_button(f"**开始对辩**", type="primary")
@@ -509,7 +462,7 @@ with interrogated_tab:
             )
             assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single")
             assistant_statement = st.text_area("**AI立论**")
-            proposed_attacks = st.text_area("**AI质询战场 - 可为空，设定过后AI将大概率使用这些战场/例子进行质询**")
+            proposed_attacks = st.text_area("**AI质询战场 - 选填，设定过后AI将大概率使用这些战场/例子进行质询**")
             human_statement = st.text_area("**用户立论**")
             user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240)
             submitted = st.form_submit_button(f"**开始接AI质询**", type="primary")

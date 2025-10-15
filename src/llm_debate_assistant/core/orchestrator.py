@@ -18,6 +18,34 @@ class DebateOrchestrator:
         self.assistant = assistant
         self.realtime_assistant = realtime_assistant
 
+
+    def generate_opening_statement_sync(
+        self, topic: str, side: str, style_example: str, status_cb=None
+    ):
+        notify = mk_notify(status_cb)
+
+        notify("=" * 10 + "Stage 1: 生成立论框架..." + "=" * 10 + "\n")
+        debate_outline = self.assistant.generate_debate_outline(topic, side)
+
+        notify("=" * 10 + "Stage 2: 基于立论框架搜寻所需资料..." + "=" * 10 + "\n")
+        debate_outline = self.assistant.sequential_fetch_evidences(
+            debate_outline, topic, side
+        )
+
+        notify("=" * 10 + "Stage 3: 生成立论初稿..." + "=" * 10 + "\n")
+        opening_statement = self.assistant.initial_opening_statement(
+            debate_outline, topic, side
+        )
+
+        notify("=" * 10 + "Stage 4: 基于示例优化写作风格..." + "=" * 10 + "\n")
+        final_opening_statement = rewrite_style(
+            opening_statement["opening_statement"],
+            style_example,
+        )
+
+        return final_opening_statement, debate_outline
+        
+
     async def generate_opening_statement(
         self, topic: str, side: str, style_example: str, llm_as_judge: bool = True, status_cb=None
     ):
