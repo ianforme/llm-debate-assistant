@@ -1,6 +1,10 @@
-def oregon_interrogated_prompts(topic: str, assistant_side: str, 
-                                debate_baseline: str,
-                                match_history: str, assistant_examples: str):
+def oregon_interrogated_prompts(
+    topic: str,
+    assistant_side: str,
+    debate_baseline: str,
+    match_history: str,
+    assistant_examples: str,
+):
     return f"""
 # 当前比赛和环节
 - 你正在参加一场奥瑞冈赛制的辩论比赛，当前环节是对方的质询环节，对方一名辩手将对你展开质询
@@ -13,6 +17,7 @@ def oregon_interrogated_prompts(topic: str, assistant_side: str,
   - **澄清性问题**：目的是确认你方论点内容。你的策略是清晰、简洁、无缝的承认或者澄清。
   - **攻击性问题**：目的是削弱你方论点。你的策略是寻找对方攻击上的问题，针对这些问题做出有效的反击，并回归己方框架。
   - **自证类问题**：目的是增强他方论点。你的策略是寻找对方逻辑上的谬误，论据的不足，或者提出相抗的论据或者逻辑来阻止对方的自证，反驳对方的观点。
+  - 你不需要每次都以对方辩友开头的方式来回答问题，你可以根据实际情况灵活调整你的回答方式
 
 # 比赛规则
 - 奥瑞冈辩论赛一般讨论政策相关的辩题，正方辩手需要指出现状下存在的问题，并提出政策的改变，从需求性，根属性，解决力和损益比四个方面均证明成功，即获得比赛的胜利。反方辩手则可以选择维持现状下的政策，并对正方提出的政策从以上四个方面展开进攻，若反方在任何方面对正方反驳成功，则反方获得比赛的胜利
