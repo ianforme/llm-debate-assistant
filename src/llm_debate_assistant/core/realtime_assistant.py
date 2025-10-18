@@ -66,7 +66,10 @@ class RealtimeAssistant:
                     mic_chunk = self.mic_queue.get()
                     encoded_chunk = base64.b64encode(mic_chunk).decode("utf-8")
                     message = json.dumps(
-                        {"type": "input_audio_buffer.append", "audio": encoded_chunk}
+                        {
+                            "type": "input_audio_buffer.append",
+                            "audio": encoded_chunk,
+                        }
                     )
                     try:
                         ws.send(message)
@@ -117,7 +120,7 @@ class RealtimeAssistant:
                         # Now handle valid JSON messages only
                         message = json.loads(message)
                         event_type = message["type"]
-                        # print(f'⚡️ Received WebSocket event: {event_type}')
+                        print(f"⚡️ Received WebSocket event: {event_type}")
 
                         if event_type == "session.created":
                             self.send_fc_session_update(ws)
