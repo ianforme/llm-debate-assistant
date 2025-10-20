@@ -1,5 +1,4 @@
 # app.py
-import asyncio
 import streamlit as st
 import math
 import html
@@ -8,6 +7,7 @@ from llm_debate_assistant.utils.style_cards import gemini_xbw_style, gemini_ys_s
 from llm_debate_assistant.core.assistant import DebateAssistant
 from llm_debate_assistant.core.realtime_assistant import RealtimeAssistant
 from llm_debate_assistant.core.orchestrator import DebateOrchestrator
+from llm_debate_assistant.prompts.oregon_oxford_prompts import demo_example, demo_bottomline, demo_statement
 
 orchestrator = DebateOrchestrator(
     assistant=DebateAssistant(), 
@@ -254,7 +254,7 @@ if "crossfire_logs" not in st.session_state:
     st.session_state.crossfire_logs = []
 
 # 页面结构：6个 Tab
-prep_tab, evidence_search_tab, oregon_interrogation_tab, crossfire_table, interrogation_tab, interrogated_tab = st.tabs(["立论准备", "论据搜索", "奥瑞冈质询练习", "对辩练习", "质询练习", "被质询练习"])
+prep_tab, evidence_search_tab, oregon_interrogation_tab = st.tabs(["立论准备", "论据搜索", "奥瑞冈质询练习"])
 
 with prep_tab:
     st.subheader("立论准备")
@@ -341,10 +341,10 @@ with oregon_interrogation_tab:
                 value="台湾应废除私人移工中介制度",
                 placeholder="台湾应废除私人移工中介制度",
             )
-            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
-            assistant_statement = st.text_area("**AI立论**")
-            assistant_examples = st.text_area("**AI使用的论据**")
-            assistant_baseline = st.text_area("**AI攻防底线**")
+            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='反方')
+            assistant_statement = st.text_area("**AI立论**", value=demo_statement)
+            assistant_examples = st.text_area("**AI使用的论据**", value=demo_example)
+            assistant_baseline = st.text_area("**AI攻防底线**", value=demo_bottomline)
             user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
             submitted = st.form_submit_button(f"**开始质询AI**", type="primary")
 
@@ -370,123 +370,3 @@ with oregon_interrogation_tab:
 
         _render_chat_history(speech_history)
         _render_comments(judge_feedback)
-
-
-with crossfire_table:
-    st.subheader("对辩练习")
-    with st.container(border=True):  
-        st.markdown("**对辩环节设定**")
-        with st.form("prep_form_4"):
-            topic = st.text_input(
-                '**辩题**',
-                value="台湾应废除私人移工中介制度",
-                placeholder="台湾应废除私人移工中介制度",
-            )
-            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
-            assistant_statement = st.text_area("**AI立论**")
-            proposed_attacks = st.text_area("**AI对辩战场 - 选填，设定过后AI将大概率使用这些战场/例子进行对辩**")
-            human_statement = st.text_area("**用户立论**")
-            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
-            submitted = st.form_submit_button(f"**开始对辩**", type="primary")
-
-    if submitted:
-        st.session_state.crossfire_logs = []
-        def _crossfire_status_cb(msg):
-            st.session_state.crossfire_logs.append(str(msg))
-            crossfire_status_area.code("".join(st.session_state.crossfire_logs[-200:]), language="text")
-        crossfire_status_area = _status_box("对辩状态", "crossfire_logs")
-        
-        with st.spinner():
-            result = orchestrator.rebuttal_crossfire_practice(
-                topic=topic, 
-                assistant_side=assistant_side,
-                assistant_statement=assistant_statement,
-                human_statement=human_statement,
-                user_time_in_seconds=user_time_in_seconds,
-                status_cb=_crossfire_status_cb,
-                proposed_attacks=proposed_attacks
-            )
-
-        judge_feedback, speech_history = result[0], result[1]
-
-        _render_chat_history(speech_history)
-        _render_comments(judge_feedback)
-
-
-with interrogation_tab:
-    st.subheader("质询练习")
-    with st.container(border=True):  
-        st.markdown("**质询环节设定**")
-        with st.form("prep_form_5"):
-            topic = st.text_input(
-                '**辩题**',
-                value="台湾应废除私人移工中介制度",
-                placeholder="台湾应废除私人移工中介制度",
-            )
-            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
-            assistant_statement = st.text_area("**AI立论**")
-            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
-            submitted = st.form_submit_button(f"**开始质询AI**", type="primary")
-
-    if submitted:
-        st.session_state.interrogation_logs = []
-        def _interrogation_status_cb(msg):
-            st.session_state.interrogation_logs.append(str(msg))
-            interrogation_status_area.code("".join(st.session_state.interrogation_logs[-200:]), language="text")
-        interrogation_status_area = _status_box("质询状态", "interrogation_logs")
-        
-        with st.spinner():
-            result = orchestrator.rebuttal_interrogation_practice(
-                topic=topic, 
-                assistant_side=assistant_side,
-                assistant_statement=assistant_statement,
-                user_time_in_seconds=user_time_in_seconds,
-                status_cb=_interrogation_status_cb
-            )
-
-        judge_feedback, speech_history = result[0], result[1]
-
-        _render_chat_history(speech_history)
-        _render_comments(judge_feedback)
-
-
-with interrogated_tab:
-    st.subheader("接质询练习")
-    with st.container(border=True):  
-        st.markdown("**质询环节设定**")
-        with st.form("prep_form_6"):
-            topic = st.text_input(
-                '**辩题**',
-                value="台湾应废除私人移工中介制度",
-                placeholder="台湾应废除私人移工中介制度",
-            )
-            assistant_side = st.pills("**AI持方**", ['正方', '反方'], selection_mode="single", default='正方')
-            assistant_statement = st.text_area("**AI立论**")
-            proposed_attacks = st.text_area("**AI质询战场 - 选填，设定过后AI将大概率使用这些战场/例子进行质询**")
-            human_statement = st.text_area("**用户立论**")
-            user_time_in_seconds = st.number_input("**用户发言时间（30-240秒)**", min_value=30, max_value=240, value=60)
-            submitted = st.form_submit_button(f"**开始接AI质询**", type="primary")
-
-    if submitted:
-        st.session_state.interrogated_logs = []
-        def _interrogated_status_cb(msg):
-            st.session_state.interrogated_logs.append(str(msg))
-            interrogated_status_area.code("".join(st.session_state.interrogated_logs[-200:]), language="text")
-        interrogated_status_area = _status_box("接质询状态", "interrogated_logs")
-        
-        with st.spinner():
-            result = orchestrator.rebuttal_interrogated_practice(
-                topic=topic, 
-                assistant_side=assistant_side,
-                assistant_statement=assistant_statement,
-                human_statement=human_statement,
-                user_time_in_seconds=user_time_in_seconds,
-                status_cb=_interrogated_status_cb,
-                proposed_attacks=proposed_attacks
-            )
-
-        judge_feedback, speech_history = result[0], result[1]
-
-        _render_chat_history(speech_history)
-        _render_comments(judge_feedback)
-        

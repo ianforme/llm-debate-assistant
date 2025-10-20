@@ -158,11 +158,11 @@ class DebateOrchestrator:
     ):
         notify = mk_notify(status_cb)
         notify("初始化质询环节中...\n")
-        match_history = f"AI助手:\n{self.assistant.generate_match_summary(topic, assistant_statement)}"
-        exchange_context = oregon_interrogated_prompts(topic, assistant_side, assistant_baseline, match_history, assistant_examples)
+        exchange_context = oregon_interrogated_prompts(topic, assistant_side, assistant_baseline, assistant_statement, assistant_examples)
         notify("开始质询环节...\n")
         speech_history = self.realtime_assistant.run(exchange_context, user_time_in_seconds, ai_start_first=False)
 
+        match_history = f"AI助手:\n{assistant_statement}"
         speech_history_text = "\n".join(speech_history)
         match_history += "\n" + speech_history_text
         match_history = "【练习背景】\n用户与AI进行质询练习，用户为质询方，AI为被质询方\n" + match_history
