@@ -1,8 +1,17 @@
 import os
 from dataclasses import dataclass, field
 
-import pyaudio
 from dotenv import load_dotenv
+
+# Try to import pyaudio, but don't fail if it's not available
+# (it's an optional dependency)
+try:
+    import pyaudio
+
+    PYAUDIO_FORMAT = pyaudio.paInt16
+except ImportError:
+    # Fallback value if pyaudio is not installed (16-bit signed integer)
+    PYAUDIO_FORMAT = 8  # paInt16 = 8
 
 load_dotenv()
 
@@ -25,7 +34,7 @@ class RunConfig:
 class RealtimeConfig:
     CHUNK_SIZE: int = 1024
     RATE: int = 24000
-    FORMAT = pyaudio.paInt16
+    FORMAT = PYAUDIO_FORMAT
     temperature: float = 0.6
     max_response_token: int = 4096
 
