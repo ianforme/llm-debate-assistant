@@ -2,7 +2,7 @@ def generate_system_prompt(topic, side):
     PREP_SYSTEM_PROMPT = f"""
     【背景】
     你是一名专业的辩手，你的任务是为一场辩论赛做准备。
-    你将被指定一个辩题和立场。 
+    你将被指定一个辩题和立场。
 
     【辩题与立场】
     辩题是：{topic}
@@ -15,7 +15,7 @@ def generate_system_prompt(topic, side):
 def debate_outline_prompt(topic, side):
     PREP_SYSTEM_PROMPT = generate_system_prompt(topic, side)
 
-    PREP_OUTLINE_PROMPT = f"""
+    PREP_OUTLINE_PROMPT = """
 【你的任务】
 你的任务是为开篇立论设计一个大纲。大纲必须包含以下部分：
 1. 关键词定义：从辩题中识别关键词，并逐一做出清晰定义，关键词必须为辩题中的原文。
@@ -30,8 +30,9 @@ def debate_outline_prompt(topic, side):
 【输出要求】
 1. 无论输入语言是什么，只能用中文输出
 """
-    
+
     return PREP_SYSTEM_PROMPT + "\n" + PREP_OUTLINE_PROMPT
+
 
 def example_card_prompt(argument, warrant, evidence_needed, topic, side):
     PREP_SYSTEM_PROMPT = generate_system_prompt(topic, side)
@@ -44,7 +45,7 @@ def example_card_prompt(argument, warrant, evidence_needed, topic, side):
 3. 每条证据必须包含以下元信息：
     - 标题
     - 链接
-    - 关键要点 
+    - 关键要点
     - 原文摘录 (必须输出每一个关键要点对应的完整原文，禁止使用 "..." 或其他类似符号做出省略，禁止输出与关键要点不相关的内容)
 4. 你可以多次使用 `web_search` 工具
 
@@ -59,6 +60,7 @@ def example_card_prompt(argument, warrant, evidence_needed, topic, side):
 论据：{evidence_needed}
 """
     return PREP_SYSTEM_PROMPT + "\n" + EXAMPLE_SEARCH_PROMPT
+
 
 OPENING_STATEMENT_REQUIREMENTS = """
 【开篇立论要求】
@@ -84,11 +86,11 @@ def opening_statement_prompt(debate_outline, topic, side):
     OPENING_STATEMENT_PROMPT = f"""
 
 【你的任务】
-你需要根据立论框架撰写一份辩论开篇立论稿。你必须严格遵守开篇立论的要求。  
+你需要根据立论框架撰写一份辩论开篇立论稿。你必须严格遵守开篇立论的要求。
 你只能使用立论框架中提供的证据，不得自行创造案例。
 
 {OPENING_STATEMENT_REQUIREMENTS}
-    
+
 【输出要求】
 1. 无论输入语言是什么，只能用中文输出
 2. 请记录下所使用证据的来源，并放入输出的 `evidences_used` 部分
@@ -99,18 +101,19 @@ def opening_statement_prompt(debate_outline, topic, side):
 
     return PREP_SYSTEM_PROMPT + "\n" + OPENING_STATEMENT_PROMPT
 
+
 def opening_statement_improver_prompt(debate_outline, topic, side):
     PREP_SYSTEM_PROMPT = generate_system_prompt(topic, side)
 
     OPENING_STATEMENT_IMPROVER_PROMPT = f"""
 【你的任务】
-你的任务是根据评审反馈改进辩论开篇立论稿。  
-1. 如果反馈要求更有力或更具体的证据：  
-   - 使用 `web_search` 工具收集相关且可信的证据。  
-   - 优先使用可验证的统计数据、明确案例或权威研究。  
+你的任务是根据评审反馈改进辩论开篇立论稿。
+1. 如果反馈要求更有力或更具体的证据：
+   - 使用 `web_search` 工具收集相关且可信的证据。
+   - 优先使用可验证的统计数据、明确案例或权威研究。
 2. 必须严格遵守开篇立论的要求重新生成稿件。
-3. 你可以使用立论框架中已有的证据。  
-4. 不要编造案例。如果所需证据不在大纲中，请使用 `web_search` 工具寻找。  
+3. 你可以使用立论框架中已有的证据。
+4. 不要编造案例。如果所需证据不在大纲中，请使用 `web_search` 工具寻找。
 
 {OPENING_STATEMENT_REQUIREMENTS}
 
@@ -121,39 +124,39 @@ def opening_statement_improver_prompt(debate_outline, topic, side):
 【立论框架】
 {debate_outline}
 """
-    
+
     return PREP_SYSTEM_PROMPT + "\n" + OPENING_STATEMENT_IMPROVER_PROMPT
+
 
 def opening_statement_evaluator_prompt(debate_outline, topic, side):
     PREP_SYSTEM_PROMPT = generate_system_prompt(topic, side)
-    
+
     OPENING_STATEMENT_EVALUATOR_PROMPT = f"""
-【你的任务】  
-你的任务是评估一份开篇立论稿是否足以在顶级辩论比赛中使用。如果不足，你必须提供详细反馈，说明需要改进的地方。  
+【你的任务】
+你的任务是评估一份开篇立论稿是否足以在顶级辩论比赛中使用。如果不足，你必须提供详细反馈，说明需要改进的地方。
 
 【通过规则】
-- **前两次尝试中不得给出通过评价**。  
-- 只有当稿件几乎不需要修改、即可用于比赛时，才可判定为通过。  
-    - 稿件必须清楚定义关键词和比较标准  
-    - 稿件最多包含 3 个逻辑严密、基于证据的论点，并且必须支持己方立场  
-    - 文风必须正式、清晰、自然口语化  
-    - 必须完全符合开篇立论的要求  
+- **前两次尝试中不得给出通过评价**。
+- 只有当稿件几乎不需要修改、即可用于比赛时，才可判定为通过。
+    - 稿件必须清楚定义关键词和比较标准
+    - 稿件最多包含 3 个逻辑严密、基于证据的论点，并且必须支持己方立场
+    - 文风必须正式、清晰、自然口语化
+    - 必须完全符合开篇立论的要求
 
 {OPENING_STATEMENT_REQUIREMENTS}
 
 【反馈指南】
-- 必须提供**可操作的反馈**：明确指出薄弱部分，并给出具体改进方法（例如：“在论点二中加入一个来自大纲的统计数据以增强说服力”；“简化这项研究的解释，让普通观众也能听懂”）。  
-- 你有权参考立论框架。当评论证据的可信度、来源、写作方式或事实细节时，必须以大纲为准。  
-- 如果需要更合适的例子而大纲中没有，你可以建议应寻找哪类证据。  
+- 必须提供**可操作的反馈**：明确指出薄弱部分，并给出具体改进方法（例如：“在论点二中加入一个来自大纲的统计数据以增强说服力”；“简化这项研究的解释，让普通观众也能听懂”）。
+- 你有权参考立论框架。当评论证据的可信度、来源、写作方式或事实细节时，必须以大纲为准。
+- 如果需要更合适的例子而大纲中没有，你可以建议应寻找哪类证据。
 
-【输出要求】  
-- 必须只用中文输出。  
-- 输出必须包含：  
+【输出要求】
+- 必须只用中文输出。
+- 输出必须包含：
   1. `evaluation_result`: "pass" 或 "fail"
-  2. `feedback`: 详细反馈，说明不足之处并提出改进建议  
+  2. `feedback`: 详细反馈，说明不足之处并提出改进建议
 
 【立论框架】
 {debate_outline}
 """
     return PREP_SYSTEM_PROMPT + "\n" + OPENING_STATEMENT_EVALUATOR_PROMPT
-

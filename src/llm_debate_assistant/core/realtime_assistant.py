@@ -4,6 +4,7 @@ import queue
 import socket
 import threading
 import time
+
 import pyaudio
 import socks
 import websocket
@@ -13,7 +14,6 @@ from llm_debate_assistant.config import app_config
 
 class RealtimeAssistant:
     def __init__(self, ws_url="wss://api.openai.com/v1/realtime?model=gpt-realtime"):
-
         self.temperature = app_config.realtime_config.temperature
         self.max_response_token = app_config.realtime_config.max_response_token
 
@@ -50,8 +50,7 @@ class RealtimeAssistant:
 
     # Function to handle microphone input and put it into a queue
     def mic_callback(self, in_data, frame_count, time_info, status):
-
-        if self.mic_active != True:
+        if not self.mic_active:
             print("🎙️🟢 Mic active")
             self.mic_active = True
         self.mic_queue.put(in_data)
@@ -82,7 +81,6 @@ class RealtimeAssistant:
 
     # Function to handle audio playback callback
     def speaker_callback(self, in_data, frame_count, time_info, status):
-
         bytes_needed = frame_count * 2
         current_buffer_size = len(self.audio_buffer)
 
@@ -104,7 +102,6 @@ class RealtimeAssistant:
         try:
             while not self.stop_event.is_set():
                 try:
-
                     if (user_time_in_seconds is None) or (
                         self.user_session_total_time <= user_time_in_seconds
                     ):

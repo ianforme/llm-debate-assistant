@@ -1,13 +1,6 @@
-from llm_debate_assistant.config import app_config
-from openai import OpenAI
 from typing import Callable, Optional
 
-
-client = OpenAI(
-    api_key=app_config.api_keys.openai_api_key,
-    organization=app_config.api_keys.org_key,
-    project=app_config.api_keys.project_key,
-)
+from llm_debate_assistant.core.client import get_client
 
 
 def rewrite_style(input_text, style_example):
@@ -26,6 +19,7 @@ def rewrite_style(input_text, style_example):
 {input_text}
     """
 
+    client = get_client()
     res = client.responses.create(
         model="gpt-5-mini-2025-08-07",
         input=prompt,
