@@ -17,7 +17,7 @@ dependencies = [
     "ipykernel (>=6.30.1,<7.0.0)",
     "black (>=25.9.0,<26.0.0)",
     "isort (>=6.1.0,<7.0.0)",
-    "flake8 (>=7.3.0,<8.0.0)",
+    "ruff (>=0.8.0,<1.0.0)",
     "docformatter (>=1.7.7,<2.0.0)",
     "pre-commit (>=4.3.0,<5.0.0)",
     "rich (>=14.1.0,<15.0.0)",
@@ -34,6 +34,10 @@ audio = [
     "pyaudio",
     "sounddevice"
 ]
+
+[tool.isort]
+profile = "black"
+line_length = 88
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

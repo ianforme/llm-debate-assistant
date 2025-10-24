@@ -2,7 +2,7 @@ def conclusion_prompts(debate_history, topic, side, debate_outline):
     return f"""
 【背景】
 你是一名专业辩手，你在一场比赛中担任结辩，你的任务是进行总结陈词，并向裁判证明你方在这次辩论中获得了胜利。
-你将被指定一个辩题和立场。 
+你将被指定一个辩题和立场。
 
 【辩题与立场】
 辩题是：{topic}
@@ -28,8 +28,8 @@ def conclusion_prompts(debate_history, topic, side, debate_outline):
 【比赛进程】
 {debate_history}
 
-【输出要求】  
-- 必须只用中文输出。  
+【输出要求】
+- 必须只用中文输出。
 - 必须仅仅输出结辩稿本身。不可附带任何其他文字信息
 
 【立论框架】

@@ -18,13 +18,14 @@ def judge_comment_prompts(debate_history, topic):
     2.4. 表达：语言是否清晰流畅、结构是否条理分明，有无感染力。（10分）
 3. 对于整场比赛给出评价，解释自己打分的理由，对比赛双方提出建议
 
-【输出要求】  
-- 必须只用中文输出。  
-- 输出必须包含：  
+【输出要求】
+- 必须只用中文输出。
+- 输出必须包含：
   1. `pro_score`: [0-100]
   2. `con_score`: [0-100]
   2. `feedback`: 对于整场比赛给出评价，解释自己打分的理由，对比赛双方提出建议
 """
+
 
 def exchange_comment_prompts(debate_history, topic):
     return f"""
@@ -45,9 +46,9 @@ def exchange_comment_prompts(debate_history, topic):
     2.3. 论据的使用 (25分)
     2.4. 语言表达 (25分)
 
-【输出要求】  
-- 必须只用中文输出。  
-- 输出必须包含：  
+【输出要求】
+- 必须只用中文输出。
+- 输出必须包含：
   1. `score`: [0-100]
   2. `feedback`: 对于用户的表现做出评价，并给出具有可行性的建议
 - `feedback`部分会被用于HTML input，所以必须使用html 的模式输出

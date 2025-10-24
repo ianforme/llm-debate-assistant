@@ -45,8 +45,7 @@ source .venv/bin/activate
 This project uses pre-commit hooks to ensure code quality and consistency. The following checks are enabled:
 
 - **Code Formatting**: `black` and `isort` for automatic Python code formatting
-- **Code Quality**: `flake8` for linting
-- **Documentation**: `docformatter` for docstring formatting
+- **Code Quality**: `ruff` for fast, modern linting
 - **File Hygiene**: trailing whitespace removal, end-of-file fixer, YAML validation, and large file detection
 
 ### Running Checks Manually
@@ -78,8 +77,8 @@ poetry run black .
 # Sort imports with isort
 poetry run isort .
 
-# Lint code with flake8
-poetry run flake8 .
+# Lint and auto-fix code with ruff
+poetry run ruff check --fix .
 
 # Format docstrings with docformatter
 poetry run docformatter --in-place --recursive .

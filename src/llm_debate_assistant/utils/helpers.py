@@ -1,7 +1,8 @@
-from llm_debate_assistant.config import app_config
-from openai import OpenAI
 from typing import Callable, Optional
 
+from openai import OpenAI
+
+from llm_debate_assistant.config import app_config
 
 client = OpenAI(
     api_key=app_config.api_keys.openai_api_key,
