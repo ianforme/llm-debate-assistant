@@ -6,6 +6,8 @@
 <!-- omit in toc -->
 ## Table of Contents
 - [🚀 Getting Started](#-getting-started)
+- [🔧 Pre-commit Hooks](#-pre-commit-hooks)
+  - [Running Checks Manually](#running-checks-manually)
 - [🏃 Run the App](#-run-the-app)
 - [🗺️ Roadmap](#️-roadmap)
 
@@ -25,6 +27,53 @@ poetry install
 Then activate the virtual environment
 ```bash
 source .venv/bin/activate
+```
+
+---
+
+## 🔧 Pre-commit Hooks
+
+This project uses pre-commit hooks to ensure code quality and consistency. The following checks are enabled:
+
+- **Code Formatting**: `black` and `isort` for automatic Python code formatting
+- **Code Quality**: `flake8` for linting
+- **Documentation**: `docformatter` for docstring formatting
+- **File Hygiene**: trailing whitespace removal, end-of-file fixer, YAML validation, and large file detection
+
+### Running Checks Manually
+
+Before committing, you can manually run all pre-commit checks to ensure your code passes:
+
+```bash
+pre-commit run --all-files
+```
+
+To run checks only on staged files (faster):
+
+```bash
+pre-commit run
+```
+
+To install the pre-commit hooks (runs automatically on commit):
+
+```bash
+pre-commit install
+```
+
+Alternatively, you can run the individual tools directly using Poetry:
+
+```bash
+# Format code with black
+poetry run black .
+
+# Sort imports with isort
+poetry run isort .
+
+# Lint code with flake8
+poetry run flake8 .
+
+# Format docstrings with docformatter
+poetry run docformatter --in-place --recursive .
 ```
 
 ---
