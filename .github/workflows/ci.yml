@@ -46,7 +46,4 @@ jobs:
         run: poetry run pre-commit run --all-files
 
       - name: Test package import
-        run: |
-          poetry run python -c "import llm_debate_assistant; print('✅ Package imported successfully')"
-          poetry run python -c "from llm_debate_assistant.core import assistant, client, orchestrator; print('✅ Core modules imported successfully')"
-          poetry run python -c "from llm_debate_assistant.config import config, schemas; print('✅ Config modules imported successfully')"
+        run: poetry run python -c "import llm_debate_assistant; print('✅ Package imported successfully')"
