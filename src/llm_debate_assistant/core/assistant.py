@@ -15,7 +15,7 @@ from llm_debate_assistant.config.schemas import (
     OpeningStatementOutline,
     PracticeComment,
 )
-from llm_debate_assistant.core.client import client
+from llm_debate_assistant.core.client import get_client
 from llm_debate_assistant.prompts.conclusion_prompts import conclusion_prompts
 from llm_debate_assistant.prompts.judge_prompts import (
     exchange_comment_prompts,
@@ -36,7 +36,7 @@ from llm_debate_assistant.utils.helpers import rewrite_style
 class DebateAssistant:
     def __init__(self, model: str = "gpt-5-mini-2025-08-07"):
         self.model = model
-        self.client = client
+        self.client = get_client()
 
     def _generate(
         self,
