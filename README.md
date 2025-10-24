@@ -24,6 +24,15 @@ Then install the dependencies
 poetry install
 ```
 
+**Optional**: If you need audio/realtime features, install the audio dependencies:
+```bash
+# On macOS, install PortAudio first
+brew install portaudio
+
+# Then install with audio extras
+poetry install --extras audio
+```
+
 Then activate the virtual environment
 ```bash
 source .venv/bin/activate
@@ -98,3 +107,5 @@ streamlit run frontend/app.py
 
 ## 🗺️ Roadmap
 - litellm adapter
+- Agents & other design patterns
+- Observability & Evaluation
