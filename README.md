@@ -11,7 +11,7 @@ This project introduces an agentic, LLM-based debate assistant, designed to func
 - [🔧 Pre-commit Hooks](#-pre-commit-hooks)
   - [Running Checks Manually](#running-checks-manually)
 - [🏃 Run the App](#-run-the-app)
-- [� Observability \& Evaluation](#-observability--evaluation)
+- [🔍 Observability \& Evaluation](#-observability--evaluation)
   - [Setup](#setup)
   - [Usage](#usage)
 - [🗺️ Roadmap](#️-roadmap)
@@ -109,7 +109,7 @@ streamlit run frontend/app.py
 
 ---
 
-## � Observability & Evaluation
+## 🔍 Observability & Evaluation
 
 This project uses [Comet Opik](https://www.comet.com/docs/opik/) for observability and evaluation of LLM interactions. Opik provides comprehensive tracking, monitoring, and evaluation capabilities for your debate assistant.
 
