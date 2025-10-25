@@ -1,8 +1,10 @@
-def rebuttal_statement_prompt(topic, side, match_history, debate_outline, minutes, words_per_minute=300):
+def rebuttal_statement_prompt(
+    topic, side, match_history, debate_outline, minutes, words_per_minute=300
+):
     return f"""
 【背景】
 你是一名专业辩手，你的任务是反驳对方的论述。
-你将被指定一个辩题和立场。 
+你将被指定一个辩题和立场。
 
 【辩题与立场】
 辩题是：{topic}
@@ -33,15 +35,22 @@ def rebuttal_statement_prompt(topic, side, match_history, debate_outline, minute
 {match_history}
 """
 
-def rebuttal_crossfire_or_interrogation_prompt(topic, side, match_history, own_opening_statement, proposed_attacks=None, is_interrogation=False):
 
+def rebuttal_crossfire_or_interrogation_prompt(
+    topic,
+    side,
+    match_history,
+    own_opening_statement,
+    proposed_attacks=None,
+    is_interrogation=False,
+):
     if is_interrogation:
-        context_requirements = f"""
+        context_requirements = """
 - 你将收到比赛到你发言之前，每一个环节发言的总结。你的任务是基于迄今为止的比赛走向, 对对方辩手展开质询(interrogation)，进攻对方的论点，证明己方的立场
 - 若对方在回答中反问你, 你不需要回答对方的问题，并明确告知对方这是你的质询环节，对方无权反问
 """
     else:
-        context_requirements = f"""
+        context_requirements = """
 - 你将收到比赛到你发言之前，每一个环节发言的总结。你的任务是基于迄今为止的比赛走向, 与对方辩手展开对辩(crossfire)，进攻对方的论点，证明己方的立场
 """
 
@@ -75,8 +84,8 @@ def rebuttal_crossfire_or_interrogation_prompt(topic, side, match_history, own_o
 {match_history}
 """
 
-def rebuttal_interrogated_prompt(topic, side, match_history, own_opening_statement):
 
+def rebuttal_interrogated_prompt(topic, side, match_history, own_opening_statement):
     return f"""
 【你的辩题与立场】
 辩题是：{topic}

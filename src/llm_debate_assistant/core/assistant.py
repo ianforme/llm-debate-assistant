@@ -1,45 +1,42 @@
-from llm_debate_assistant.core.client import client
+import asyncio
+import datetime
 import json
-from typing import Optional, Any, Dict
-from llm_debate_assistant.prompts.conclusion_prompts import conclusion_prompts
-from llm_debate_assistant.utils.helpers import rewrite_style
-from llm_debate_assistant.prompts.judge_prompts import (
-    judge_comment_prompts, 
-    exchange_comment_prompts
+from typing import Any, Dict, Optional
+
+from agents import Agent, ModelSettings, Runner, WebSearchTool, trace
+from openai.types.shared import Reasoning
+
+from llm_debate_assistant.config.schemas import (
+    Examples,
+    JudgeComment,
+    MatchTurnSummary,
+    OpeningStatement,
+    OpeningStatementEvaluationFeedback,
+    OpeningStatementOutline,
+    PracticeComment,
 )
-from llm_debate_assistant.prompts.rebuttal_prompts import (
-    rebuttal_statement_prompt
+from llm_debate_assistant.core.client import get_client
+from llm_debate_assistant.prompts.conclusion_prompts import conclusion_prompts
+from llm_debate_assistant.prompts.judge_prompts import (
+    exchange_comment_prompts,
+    judge_comment_prompts,
 )
 from llm_debate_assistant.prompts.opening_statement_prompts import (
     debate_outline_prompt,
     example_card_prompt,
-    opening_statement_prompt,
-    opening_statement_improver_prompt,
     opening_statement_evaluator_prompt,
-
+    opening_statement_improver_prompt,
+    opening_statement_prompt,
 )
+from llm_debate_assistant.prompts.rebuttal_prompts import rebuttal_statement_prompt
 from llm_debate_assistant.prompts.summary_prompt import match_summary_prompt
-from llm_debate_assistant.config.schemas import (
-    OpeningStatementOutline,
-    Examples,
-    OpeningStatement,
-    MatchTurnSummary,
-    OpeningStatementEvaluationFeedback,
-    JudgeComment,
-    PracticeComment
-)
-
-from agents import Agent, Runner, trace, ModelSettings, WebSearchTool
-from openai.types.shared import Reasoning
-
-import datetime
-import asyncio
+from llm_debate_assistant.utils.helpers import rewrite_style
 
 
 class DebateAssistant:
     def __init__(self, model: str = "gpt-5-mini-2025-08-07"):
         self.model = model
-        self.client = client
+        self.client = get_client()
 
     def _generate(
         self,
@@ -69,7 +66,9 @@ class DebateAssistant:
             )
             return response.output_text
 
-    def generate_conclusion(self, debate_history, topic, side, debate_outline, style_example):
+    def generate_conclusion(
+        self, debate_history, topic, side, debate_outline, style_example
+    ):
         res = self._generate(
             conclusion_prompts(debate_history, topic, side, debate_outline),
             reasoning={"effort": "low"},
@@ -113,10 +112,8 @@ class DebateAssistant:
             structured_output=OpeningStatement,
             reasoning={"effort": "medium"},
         )
-    
-    def generate_match_summary(
-            self, topic: str, speech: str
-    ):
+
+    def generate_match_summary(self, topic: str, speech: str):
         print("总结辩手发言...")
         return self._generate(
             match_summary_prompt(topic, speech),
@@ -132,7 +129,7 @@ class DebateAssistant:
             reasoning={"effort": "low"},
             text={"verbosity": "medium"},
         )
-    
+
     def generate_exchange_practice_feedback(self, debate_history, topic):
         print("Coaching making comments...")
         return self._generate(
@@ -141,32 +138,32 @@ class DebateAssistant:
             reasoning={"effort": "low"},
             text={"verbosity": "medium"},
         )
-    
-    def generate_rebuttal_statement(self, topic, side, match_history, debate_outline, minutes):
+
+    def generate_rebuttal_statement(
+        self, topic, side, match_history, debate_outline, minutes
+    ):
         return self._generate(
-            rebuttal_statement_prompt(topic, side, match_history, debate_outline, minutes),
-            reasoning = {'effort': 'medium'},
+            rebuttal_statement_prompt(
+                topic, side, match_history, debate_outline, minutes
+            ),
+            reasoning={"effort": "medium"},
         )
-    
+
     def sequential_fetch_evidences(
-            self, debate_outline: Dict[str, Any], topic: str, side: str
-    ):  
+        self, debate_outline: Dict[str, Any], topic: str, side: str
+    ):
         results = []
         for arg_card in debate_outline["arguments"]:
-            argument = arg_card['argument']
-            warrant = arg_card['warrant']
-            evidence_needed = ';'.join(arg_card['evidence_needed'])
+            argument = arg_card["argument"]
+            warrant = arg_card["warrant"]
+            evidence_needed = ";".join(arg_card["evidence_needed"])
             results.append(
                 (
-                    argument, 
-                    warrant, 
+                    argument,
+                    warrant,
                     self.search_for_evidence(
-                        argument,
-                        warrant,
-                        evidence_needed,
-                        topic,
-                        side
-                    )
+                        argument, warrant, evidence_needed, topic, side
+                    ),
                 )
             )
 
@@ -188,22 +185,28 @@ class DebateAssistant:
 
         debate_outline["arguments"] = arguments
         return debate_outline
-    
+
     async def parallel_fetch_evidences(
         self, debate_outline: Dict[str, Any], topic: str, side: str
-    ):  
+    ):
         # default we have 3 arguments per opening statement, each argument will take one thread
         sema = asyncio.Semaphore(3)
         tasks = []
 
         async def run_with_sema(func, argument, warrant, evidence_needed, topic, side):
             async with sema:
-                return argument, warrant, await asyncio.to_thread(func, argument, warrant, evidence_needed, topic, side)
+                return (
+                    argument,
+                    warrant,
+                    await asyncio.to_thread(
+                        func, argument, warrant, evidence_needed, topic, side
+                    ),
+                )
 
         for arg_card in debate_outline["arguments"]:
-            argument = arg_card['argument']
-            warrant = arg_card['warrant']
-            evidence_needed = ';'.join(arg_card['evidence_needed'])
+            argument = arg_card["argument"]
+            warrant = arg_card["warrant"]
+            evidence_needed = ";".join(arg_card["evidence_needed"])
             tasks.append(
                 asyncio.create_task(
                     run_with_sema(
