@@ -2,7 +2,7 @@
 # llm-debate-assistant
 基于大语言模型的辩论比赛备赛助手.
 
-This project introduces a agentic, LLM-based debate assistant, designed to function as an autonomous partner in preparing for competitive debates
+This project introduces an agentic, LLM-based debate assistant, designed to function as an autonomous partner in preparing for competitive debates
 
 ---
 <!-- omit in toc -->
