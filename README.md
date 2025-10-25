@@ -1,6 +1,8 @@
 <!-- omit in toc -->
 # llm-debate-assistant
-基于大语言模型的辩论比赛备赛助手. Powered by GPT 5
+基于大语言模型的辩论比赛备赛助手.
+
+This project introduces an agentic, LLM-based debate assistant, designed to function as an autonomous partner in preparing for competitive debates
 
 ---
 <!-- omit in toc -->
@@ -9,6 +11,9 @@
 - [🔧 Pre-commit Hooks](#-pre-commit-hooks)
   - [Running Checks Manually](#running-checks-manually)
 - [🏃 Run the App](#-run-the-app)
+- [🔍 Observability \& Evaluation](#-observability--evaluation)
+  - [Setup](#setup)
+  - [Usage](#usage)
 - [🗺️ Roadmap](#️-roadmap)
 
 ## 🚀 Getting Started
@@ -104,7 +109,71 @@ streamlit run frontend/app.py
 
 ---
 
+## 🔍 Observability & Evaluation
+
+This project uses [Comet Opik](https://www.comet.com/docs/opik/) for observability and evaluation of LLM interactions. Opik provides comprehensive tracking, monitoring, and evaluation capabilities for your debate assistant.
+
+### Setup
+
+1. Configure your Opik credentials in `~/.opik.config`:
+```ini
+[opik]
+url_override = https://www.comet.com/opik/api/
+workspace = your-workspace
+api_key = your-api-key
+```
+
+2. For integration examples, see:
+   - [Opik Documentation](https://www.comet.com/docs/opik/) - Integration guides for various model providers and agent frameworks
+
+### Usage
+
+There are two approaches to enable automatic logging:
+
+**Option 1: Client-level tracking (Recommended)**
+
+The OpenAI client is automatically tracked in `src/llm_debate_assistant/core/client.py`:
+
+```python
+from opik.integrations.openai import track_openai
+from openai import OpenAI
+
+client = OpenAI()
+client = track_openai(client, project_name = "llm-debate-assistant")  # All API calls are now logged
+```
+
+With this approach, all LLM calls throughout your application are automatically logged without any decorators.
+
+**Option 2: Function-level tracking**
+
+You can also use decorators for more granular control or to track custom functions:
+
+```python
+import opik
+
+@opik.track(project_name="llm-debate-assistant")
+def your_function():
+    # Your code here
+    pass
+```
+
+For examples, see [`examples/client_logging.py`](examples/client_logging.py) (client-level) and [`examples/decorator_logging.py`](examples/decorator_logging.py) (decorator-level).
+
+All LLM calls, inputs, outputs, and metadata are logged to Opik for observability.
+
+What we log (short): latency, token counts, estimated cost, model + parameters, errors/tool usage, and optional tags (feature/experiment).
+
+How to use traces/spans for evaluation:
+
+- Use request spans to compute P50/P95 latency and spot slow endpoints.
+- Aggregate token & cost per-feature or per-model to find expensive prompts and opportunities to optimize.
+- Correlate spans with tags (feature, experiment) to compare model choices and measure quality vs. cost.
+- Use traces to drive dashboards and alerts (latency spikes, cost anomalies, error rates).
+
+![Opik Logging Example](asset/logging_example.png)
+
+---
+
 ## 🗺️ Roadmap
 - litellm adapter
 - Agents & other design patterns
-- Observability & Evaluation
