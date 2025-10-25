@@ -1,6 +1,8 @@
 <!-- omit in toc -->
 # llm-debate-assistant
-基于大语言模型的辩论比赛备赛助手. Powered by GPT 5
+基于大语言模型的辩论比赛备赛助手.
+
+This project introduces a agentic, LLM-based debate assistant, designed to function as an autonomous partner in preparing for competitive debates
 
 ---
 <!-- omit in toc -->
@@ -9,6 +11,9 @@
 - [🔧 Pre-commit Hooks](#-pre-commit-hooks)
   - [Running Checks Manually](#running-checks-manually)
 - [🏃 Run the App](#-run-the-app)
+- [� Observability \& Evaluation](#-observability--evaluation)
+  - [Setup](#setup)
+  - [Usage](#usage)
 - [🗺️ Roadmap](#️-roadmap)
 
 ## 🚀 Getting Started
@@ -104,7 +109,41 @@ streamlit run frontend/app.py
 
 ---
 
+## � Observability & Evaluation
+
+This project uses [Comet Opik](https://www.comet.com/docs/opik/) for observability and evaluation of LLM interactions. Opik provides comprehensive tracking, monitoring, and evaluation capabilities for your debate assistant.
+
+### Setup
+
+1. Configure your Opik credentials in `~/.opik.config`:
+```ini
+[opik]
+url_override = https://www.comet.com/opik/api/
+workspace = your-workspace
+api_key = your-api-key
+```
+
+2. For integration examples, see:
+   - [`examples/log_debate_outline_generation.py`](examples/log_debate_outline_generation.py) - Basic tracking example
+   - [Opik Documentation](https://www.comet.com/docs/opik/) - Integration guides for various model providers and agent frameworks
+
+### Usage
+
+Simply decorate your functions with `@opik.track()` to enable automatic logging:
+
+```python
+import opik
+
+@opik.track(project_name="llm-debate-assistant")
+def your_function():
+    # Your code here
+    pass
+```
+
+All LLM calls, inputs, outputs, and metadata will be automatically logged to your Opik workspace for analysis and evaluation.
+
+---
+
 ## 🗺️ Roadmap
 - litellm adapter
 - Agents & other design patterns
-- Observability & Evaluation
