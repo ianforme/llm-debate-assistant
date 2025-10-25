@@ -124,12 +124,29 @@ api_key = your-api-key
 ```
 
 2. For integration examples, see:
-   - [`examples/log_debate_outline_generation.py`](examples/log_debate_outline_generation.py) - Basic tracking example
    - [Opik Documentation](https://www.comet.com/docs/opik/) - Integration guides for various model providers and agent frameworks
 
 ### Usage
 
-Simply decorate your functions with `@opik.track()` to enable automatic logging:
+There are two approaches to enable automatic logging:
+
+**Option 1: Client-level tracking (Recommended)**
+
+The OpenAI client is automatically tracked in `src/llm_debate_assistant/core/client.py`:
+
+```python
+from opik.integrations.openai import track_openai
+from openai import OpenAI
+
+client = OpenAI()
+client = track_openai(client, project_name = "llm-debate-assistant")  # All API calls are now logged
+```
+
+With this approach, all LLM calls throughout your application are automatically logged without any decorators.
+
+**Option 2: Function-level tracking**
+
+You can also use decorators for more granular control or to track custom functions:
 
 ```python
 import opik
@@ -140,7 +157,20 @@ def your_function():
     pass
 ```
 
-All LLM calls, inputs, outputs, and metadata will be automatically logged to your Opik workspace for analysis and evaluation.
+For examples, see [`examples/client_logging.py`](examples/client_logging.py) (client-level) and [`examples/decorator_logging.py`](examples/decorator_logging.py) (decorator-level).
+
+All LLM calls, inputs, outputs, and metadata are logged to Opik for observability.
+
+What we log (short): latency, token counts, estimated cost, model + parameters, errors/tool usage, and optional tags (feature/experiment).
+
+How to use traces/spans for evaluation:
+
+- Use request spans to compute P50/P95 latency and spot slow endpoints.
+- Aggregate token & cost per-feature or per-model to find expensive prompts and opportunities to optimize.
+- Correlate spans with tags (feature, experiment) to compare model choices and measure quality vs. cost.
+- Use traces to drive dashboards and alerts (latency spikes, cost anomalies, error rates).
+
+![Opik Logging Example](asset/logging_example.png)
 
 ---
 
