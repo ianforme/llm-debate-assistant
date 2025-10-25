@@ -1,12 +1,16 @@
-import opik
+"""
+Example demonstrating automatic logging via tracked OpenAI client.
+
+This example relies on the client-level tracking configured in core/client.py.
+No decorators needed - all OpenAI API calls are automatically logged to Opik.
+"""
 
 from llm_debate_assistant.core.assistant import DebateAssistant
 
 
-@opik.track(project_name="llm-debate-assistant")
 def main():
     # Initialize the DebateAssistant
-    # The OpenAI client is automatically initialized within the assistant
+    # The OpenAI client is automatically tracked via track_openai() in core/client.py
     print("Initializing DebateAssistant...")
     assistant = DebateAssistant(model="gpt-5-mini-2025-08-07")
 
@@ -20,6 +24,7 @@ def main():
     print("-" * 70)
 
     # Call the generate_debate_outline function
+    # All LLM calls are automatically logged to Opik
     outline = assistant.generate_debate_outline(topic=topic, side=side)
 
     # Display the generated outline
@@ -43,6 +48,7 @@ def main():
 
     print("\n" + "=" * 70)
     print("✅ Debate outline generated successfully!")
+    print("📊 Check your Opik dashboard for logged traces!")
 
     return outline
 
