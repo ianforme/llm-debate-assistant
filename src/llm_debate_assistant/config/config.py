@@ -21,6 +21,7 @@ class ApiKeys:
     openai_api_key: str = os.getenv("OPENAI_API_KEY")
     org_key: str = os.getenv("ORG_KEY")
     project_key: str = os.getenv("PROJECT_KEY")
+    gemini_api_key: str = os.getenv("GOOGLE_API_KEY")
 
 
 @dataclass

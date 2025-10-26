@@ -26,7 +26,13 @@ dependencies = [
     "websocket-client",
     "websockets",
     "opik (>=1.8.85,<2.0.0)",
-    "google-genai (>=1.46.0,<2.0.0)"
+    "google-genai (>=1.46.0,<2.0.0)",
+    "langchain (>=1.0.2,<2.0.0)",
+    "langgraph (>=1.0.1,<2.0.0)",
+    "langchain-google-genai (>=3.0.0,<4.0.0)",
+    "langchain-openai (>=1.0.1,<2.0.0)",
+    "langchain-community (>=0.4) ; python_version >= \"3.11\" and python_version < \"3.15\"",
+    "faiss-cpu (>=1.12.0,<1.13) ; python_version >= \"3.11\" and python_version < \"3.15\""
 ]
 
 [project.optional-dependencies]
