@@ -180,6 +180,7 @@ def _build_evidence_query(
     evidence_needed: list[str],
     topic: str,
     side: str,
+    feedback: str | None = None,
 ) -> str:
     """private method for building evidence search queries.
 
@@ -189,18 +190,25 @@ def _build_evidence_query(
         evidence_needed (list[str]): List of specific evidence types needed
         topic (str): The debate topic
         side (str): Which side of the debate
+        feedback (str | None): Optional evaluator feedback for refining search
 
     Returns:
         str: The formatted search query string
     """
     evidence_list = "\n".join(f"- {e}" for e in evidence_needed)
-    return EVIDENCE_SEARCH_PROMPT_TEMPLATE.format(
+    query = EVIDENCE_SEARCH_PROMPT_TEMPLATE.format(
         topic=topic,
         side=side,
         argument=argument,
         warrant=warrant,
         evidence_list=evidence_list,
     )
+
+    # Add feedback context if provided
+    if feedback:
+        query += f"\n\n【评审反馈】\n{feedback}\n\n请根据以上反馈，寻找更合适的证据。"
+
+    return query
 
 
 # ==============================================================
@@ -216,6 +224,7 @@ def search_for_evidence(
     topic: str,
     side: str,
     model: str = "gemini-2.5-pro",
+    feedback: str | None = None,
 ) -> dict:
     """Search for evidence to support a debate argument.
 
@@ -226,11 +235,14 @@ def search_for_evidence(
         topic (str): The debate topic
         side (str): Which side of the debate
         model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-pro".
+        feedback (str | None): Optional evaluator feedback for refining search
 
     Returns:
         dict: A dictionary containing search results and generated evidence analysis
     """
-    query = _build_evidence_query(argument, warrant, evidence_needed, topic, side)
+    query = _build_evidence_query(
+        argument, warrant, evidence_needed, topic, side, feedback
+    )
     return search_web(query, model=model)
 
 
@@ -242,6 +254,7 @@ async def async_search_for_evidence(
     topic: str,
     side: str,
     model: str = "gemini-2.5-pro",
+    feedback: str | None = None,
 ) -> dict:
     """Search for evidence to support a debate argument asynchronously.
 
@@ -252,11 +265,14 @@ async def async_search_for_evidence(
         topic (str): The debate topic
         side (str): Which side of the debate
         model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-pro".
+        feedback (str | None): Optional evaluator feedback for refining search
 
     Returns:
         dict: A dictionary containing search results and generated evidence analysis
     """
-    query = _build_evidence_query(argument, warrant, evidence_needed, topic, side)
+    query = _build_evidence_query(
+        argument, warrant, evidence_needed, topic, side, feedback
+    )
     return await async_search_web(query, model=model)
 
 
@@ -268,6 +284,7 @@ async def async_search_for_evidence_threaded(
     topic: str,
     side: str,
     model: str = "gemini-2.5-pro",
+    feedback: str | None = None,
 ) -> dict:
     """Search for evidence using thread-based async.
 
@@ -283,6 +300,7 @@ async def async_search_for_evidence_threaded(
         topic (str): The debate topic
         side (str): Which side of the debate
         model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-pro".
+        feedback (str | None): Optional evaluator feedback for refining search
 
     Returns:
         dict: A dictionary containing search results and generated evidence analysis
@@ -297,6 +315,7 @@ async def async_search_for_evidence_threaded(
         topic,
         side,
         model,
+        feedback,
     )
 
 
@@ -311,6 +330,7 @@ async def search_multiple_arguments(
     side: str,
     model: str = "gemini-2.5-pro",
     use_threaded: bool = False,
+    feedback: str | None = None,
 ) -> list[ArgumentEvidence]:
     """Search for evidence for multiple arguments concurrently.
 
@@ -323,6 +343,7 @@ async def search_multiple_arguments(
             Defaults to "gemini-2.5-pro".
         use_threaded (bool, optional): If True, uses thread-based async.
             Defaults to False.
+        feedback (str | None): Optional evaluator feedback for refining search
 
     Returns:
         list[ArgumentEvidence]: A list of ArgumentEvidence objects containing
@@ -344,6 +365,7 @@ async def search_multiple_arguments(
             topic=topic,
             side=side,
             model=model,
+            feedback=feedback,
         )
         for argument, warrant, evidence_needed in arguments
     ]
