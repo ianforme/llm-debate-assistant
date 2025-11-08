@@ -32,7 +32,13 @@ dependencies = [
     "langchain-google-genai (>=3.0.0,<4.0.0)",
     "langchain-openai (>=1.0.1,<2.0.0)",
     "langchain-community (>=0.4) ; python_version >= \"3.11\" and python_version < \"3.15\"",
-    "faiss-cpu (>=1.12.0,<1.13) ; python_version >= \"3.11\" and python_version < \"3.15\""
+    "faiss-cpu (>=1.12.0,<1.13) ; python_version >= \"3.11\" and python_version < \"3.15\"",
+    "livekit (>=1.0.18,<2.0.0)",
+    "livekit-agents",
+    "livekit-plugins-openai",
+    "livekit-plugins-noise-cancellation",
+    "livekit-plugins-google (>=1.2.18,<2.0.0)",
+    "livekit-plugins-turn-detector (>=1.2.18,<2.0.0)"
 ]
 
 [project.optional-dependencies]
