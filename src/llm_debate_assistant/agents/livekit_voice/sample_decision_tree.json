@@ -1,0 +1,117 @@
+{
+  "title": "华语辩论质询流程图",
+  "description": "这是一个用于在辩论中质询对方辩手的决策树模型，从确认对方观点和证据开始，到最终进行总结或反驳。",
+  "startNode": "confirmViewpoint",
+  "decisionTree": {
+    "confirmViewpoint": {
+      "type": "question",
+      "text": "确认对方观点后，对方有资料吗？",
+      "options": [
+        {
+          "answer": "有",
+          "nextNode": "canRefuteOnSpot"
+        },
+        {
+          "answer": "没有",
+          "nextNode": "noEvidenceType"
+        }
+      ]
+    },
+    "noEvidenceType": {
+      "type": "decision",
+      "text": "是哪种“没有”的情况？",
+      "options": [
+        {
+          "condition": "暂时没有/要找/下一个辩位给",
+          "nextNode": "actionPressForEvidence"
+        },
+        {
+          "condition": "完全没有",
+          "nextNode": "actionExplainBurdenOfProof"
+        }
+      ]
+    },
+    "actionPressForEvidence": {
+      "type": "action",
+      "text": "指出对方问题：“你方到目前为止，还没有提供XX举证” + 后续持续施压"
+    },
+    "actionExplainBurdenOfProof": {
+      "type": "action",
+      "text": "说明对方为什么应该举证 + 假装让步",
+      "nextNode": "transitionToOurAnalysis"
+    },
+    "canRefuteOnSpot": {
+      "type": "question",
+      "text": "能当场拆解（反驳）吗？",
+      "options": [
+        {
+          "answer": "能",
+          "nextNode": "refuteMethod"
+        },
+        {
+          "answer": "无法当场拆",
+          "nextNode": "actionVerifyLater"
+        }
+      ]
+    },
+    "actionVerifyLater": {
+      "type": "action",
+      "text": "要求提供资料，用于后续核证"
+    },
+    "refuteMethod": {
+      "type": "decision",
+      "text": "选择拆解方式",
+      "options": [
+        {
+          "condition": "资料本身不可信",
+          "nextNode": "askForMoreEvidence"
+        },
+        {
+          "condition": "资料可信，但无法证明其结论",
+          "nextNode": "askForMoreEvidence"
+        }
+      ]
+    },
+    "askForMoreEvidence": {
+      "type": "question",
+      "text": "还有下一份资料吗？",
+      "options": [
+        {
+          "answer": "有",
+          "nextNode": "canRefuteOnSpot"
+        },
+        {
+          "answer": "没有",
+          "nextNode": "transitionToOurAnalysis"
+        }
+      ]
+    },
+    "transitionToOurAnalysis": {
+      "type": "statement",
+      "text": "那么，我方来看这份（唯一的）资料",
+      "nextNode": "opponentReaction"
+    },
+    "opponentReaction": {
+      "type": "decision",
+      "text": "对方是否反抗？",
+      "options": [
+        {
+          "condition": "对方有反抗",
+          "nextNode": "actionExplainAndCompare"
+        },
+        {
+          "condition": "对方没反抗",
+          "nextNode": "actionSummarize"
+        }
+      ]
+    },
+    "actionExplainAndCompare": {
+      "type": "action",
+      "text": "解释 + 进行“比烂”（证明我方立场相对更优）"
+    },
+    "actionSummarize": {
+      "type": "action",
+      "text": "感谢对方 + 进行小结"
+    }
+  }
+}
