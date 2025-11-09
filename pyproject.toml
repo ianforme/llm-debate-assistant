@@ -38,7 +38,9 @@ dependencies = [
     "livekit-plugins-openai",
     "livekit-plugins-noise-cancellation",
     "livekit-plugins-google (>=1.2.18,<2.0.0)",
-    "livekit-plugins-turn-detector (>=1.2.18,<2.0.0)"
+    "livekit-plugins-turn-detector (>=1.2.18,<2.0.0)",
+    "livekit-plugins-silero (>=1.2.18,<2.0.0)",
+    "livekit-plugins-cartesia (>=1.2.18,<2.0.0)"
 ]
 
 [project.optional-dependencies]
