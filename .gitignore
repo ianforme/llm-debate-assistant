@@ -210,3 +210,6 @@ credentials
 notebook/playground.ipynb
 
 .DS_Store
+
+# Temp files for deep preparation agent
+.temp/
