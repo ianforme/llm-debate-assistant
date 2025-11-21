@@ -11,7 +11,7 @@ from .filesystem_protocol import (
     read_file,
     write_file,
 )
-from .llm import DEFAULT_MODEL, get_llm
+from .llm import DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL, get_llm
 from .manage_todo_list import TaskStatus, TodoItem, TodoList, manage_todo_list
 from .virtual_filesystem import VirtualFilesystem
 from .web_search import (
@@ -40,7 +40,8 @@ __all__ = [
     "file_exists",
     # LLM configuration
     "get_llm",
-    "DEFAULT_MODEL",
+    "DEFAULT_GEMINI_MODEL",
+    "DEFAULT_OPENAI_MODEL",
     # Todo list tools
     "TodoList",
     "TodoItem",

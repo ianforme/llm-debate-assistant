@@ -30,7 +30,7 @@ from llm_debate_assistant.prompts.opening_statement_prompts import (
 )
 from llm_debate_assistant.prompts.rebuttal_prompts import rebuttal_statement_prompt
 from llm_debate_assistant.prompts.summary_prompt import match_summary_prompt
-from llm_debate_assistant.utils.helpers import rewrite_style
+from llm_debate_assistant.helpers.helpers import rewrite_style
 
 
 class DebateAssistant:
@@ -42,7 +42,7 @@ class DebateAssistant:
         self,
         input_prompt: str,
         structured_output: Optional[Any] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any,
     ):
         """
         A generic method to interact with the LLM client.
@@ -167,7 +167,7 @@ class DebateAssistant:
                 )
             )
 
-        arguments = []
+        arguments: list[Dict[str, Any]] = []
         for argument, warrant, evidences in results:
             if (len(arguments) == 0) or (
                 argument not in [arg["argument"] for arg in arguments]
@@ -221,7 +221,7 @@ class DebateAssistant:
             )
         results = await asyncio.gather(*tasks)
 
-        arguments = []
+        arguments: list[Dict[str, Any]] = []
         for argument, warrant, evidences in results:
             if (len(arguments) == 0) or (
                 argument not in [arg["argument"] for arg in arguments]

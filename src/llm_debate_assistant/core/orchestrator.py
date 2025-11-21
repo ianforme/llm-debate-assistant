@@ -9,7 +9,7 @@ from llm_debate_assistant.prompts.rebuttal_prompts import (
     rebuttal_crossfire_or_interrogation_prompt,
     rebuttal_interrogated_prompt,
 )
-from llm_debate_assistant.utils.helpers import mk_notify, rewrite_style
+from llm_debate_assistant.helpers.helpers import mk_notify, rewrite_style
 
 
 class DebateOrchestrator:
@@ -99,7 +99,7 @@ class DebateOrchestrator:
         assistant_statement: str,
         human_statement: str,
         user_time_in_seconds: int,
-        proposed_attacks: str = None,
+        proposed_attacks: str | None = None,
         status_cb=None,
     ):
         notify = mk_notify(status_cb)
@@ -134,7 +134,7 @@ class DebateOrchestrator:
         assistant_statement: str,
         human_statement: str,
         user_time_in_seconds: int,
-        proposed_attacks: str = None,
+        proposed_attacks: str | None = None,
         status_cb=None,
     ):
         notify = mk_notify(status_cb)
@@ -248,7 +248,10 @@ if __name__ == "__main__":
     orchestrator = DebateOrchestrator(assistant, realtime_assistant)
     final_opening_statement, debate_outline = asyncio.run(
         orchestrator.generate_opening_statement(
-            topic="人工智能是否应该被严格监管？", side="正方", llm_as_judge=True
+            topic="人工智能是否应该被严格监管？",
+            side="正方",
+            style_example="",
+            llm_as_judge=True,
         )
     )
     print(final_opening_statement)

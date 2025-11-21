@@ -51,9 +51,9 @@ def should_continue_improving(
         return "redo_draft"
 
     # Otherwise, automatic improvement logic
-    evaluation = state.get("evaluation", {})
-    iteration_count = state.get("iteration_count", 1)
-    max_iterations = state.get("max_iterations", 3)
+    evaluation = state.get("evaluation") or {}
+    iteration_count = state.get("iteration_count") or 1
+    max_iterations = state.get("max_iterations") or 3
 
     # End if passed or max iterations reached
     if evaluation.get("evaluation_result") == "pass":

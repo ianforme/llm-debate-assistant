@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from google.genai import types
 
@@ -65,7 +65,7 @@ def _extract_search_metadata(response: Any) -> dict[str, Any]:
     Returns:
         dict[str, Any]: A dictionary containing extracted metadata and search results
     """
-    result = {
+    result: dict[str, Any] = {
         "text": response.text if response.text else "",
         "grounding_metadata": None,
         "search_results": [],
@@ -386,11 +386,12 @@ async def search_multiple_arguments(
                 )
             )
         else:
+            # Type narrowing: result is dict[str, Any] here after the isinstance check
             results.append(
                 ArgumentEvidence(
                     argument=argument,
                     warrant=warrant,
-                    results=result,
+                    results=cast(dict[Any, Any], result),
                 )
             )
 
