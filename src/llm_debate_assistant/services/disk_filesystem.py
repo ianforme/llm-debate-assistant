@@ -18,7 +18,7 @@ class DiskFilesystem:
 
     Implements FilesystemProtocol for persistent disk storage.
 
-    Files are written to .temp/debate_sessions/<session_id>/ and
+    Files are written to .temp/debate_preparation_sessions/<session_id>/ and
     persist after the process ends.
     """
 
@@ -28,15 +28,17 @@ class DiskFilesystem:
         """Initialize disk filesystem.
 
         Args:
-            root_dir: Root directory for all sessions (default: .temp/debate_sessions)
-            session_id: Unique session ID (default: auto-generated UUID)
+            root_dir (Optional[Path]): Root directory for all sessions
+                (default: .temp/debate_preparation_sessions)
+            session_id (Optional[str]): Unique session ID
+                (default: auto-generated UUID)
         """
         if root_dir is None:
-            # Use .temp/debate_sessions in project directory
-            root_dir = Path.cwd() / ".temp" / "debate_sessions"
+            # Use .temp/debate_preparation_sessions in project directory
+            root_dir = Path.cwd() / ".temp" / "debate_preparation_sessions"
 
         if session_id is None:
-            session_id = str(uuid4())[:8]
+            session_id = str(uuid4())  # use fully random UUID
 
         self.session_id = session_id
         self.root_dir = Path(root_dir) / session_id
@@ -46,10 +48,10 @@ class DiskFilesystem:
         """Convert virtual path to actual disk path.
 
         Args:
-            path: Virtual path like "/outline.md"
+            path (str): Virtual path like "/outline.md"
 
         Returns:
-            Actual path like ".temp/debate_sessions/abc123/outline.md"
+            Path: Actual path like ".temp/debate_preparation_sessions/abc123/outline.md"
         """
         # Remove leading slash and resolve relative to root
         relative_path = path.lstrip("/")
@@ -59,8 +61,8 @@ class DiskFilesystem:
         """Write content to a file on disk.
 
         Args:
-            path: File path (e.g., "/research/notes.txt")
-            content: File content to write
+            path (str): File path (e.g., "/research/notes.txt")
+            content (str): File content to write
 
         Returns:
             Dict with success status and message
@@ -95,8 +97,8 @@ class DiskFilesystem:
         """Read content from a file on disk.
 
         Args:
-            path: File path to read
-            lines: Optional number of lines to read (None = read all)
+            path (str): File path to read
+            lines (Optional[int]): Optional number of lines to read (None = read all)
 
         Returns:
             Dict with success status, message, and content
@@ -138,10 +140,10 @@ class DiskFilesystem:
         """List files in a directory.
 
         Args:
-            directory: Directory path to list (default: "/")
+            directory (str): Directory path to list (default: "/")
 
         Returns:
-            Dict with success status, message, and list of files
+            Dict[str, Any]: Dict with success status, message, and list of files
         """
         disk_path = self._resolve_path(directory)
 
@@ -180,12 +182,12 @@ class DiskFilesystem:
         """Edit a file by replacing text.
 
         Args:
-            path: File path to edit
-            old_text: Text to find and replace
-            new_text: Replacement text
+            path (str): File path to edit
+            old_text (str): Text to find and replace
+            new_text (str): Replacement text
 
         Returns:
-            Dict with success status and message
+            Dict[str, Any]: Dict with success status and message
         """
         disk_path = self._resolve_path(path)
 
@@ -226,13 +228,13 @@ class DiskFilesystem:
             }
 
     def delete(self, path: str) -> Dict[str, Any]:
-        """Delete a file.
+        """Delete a file at the given path.
 
         Args:
-            path: File path to delete
+            path (str): File path to delete
 
         Returns:
-            Dict with success status and message
+            Dict[str, Any]: Dict with success status and message
         """
         disk_path = self._resolve_path(path)
 
@@ -259,13 +261,13 @@ class DiskFilesystem:
             }
 
     def exists(self, path: str) -> bool:
-        """Check if a file exists.
+        """Check if a file exists at the given path.
 
         Args:
-            path: File path to check
+            path (str): File path to check
 
         Returns:
-            True if file exists, False otherwise
+            bool: True if file exists, False otherwise
         """
         disk_path = self._resolve_path(path)
         return disk_path.exists()
@@ -274,7 +276,7 @@ class DiskFilesystem:
         """Get list of all file paths (recursively).
 
         Returns:
-            List of all file paths relative to root
+            List[str]: List of all file paths relative to root
         """
         files = []
         for path in self.root_dir.rglob("*"):
@@ -285,7 +287,7 @@ class DiskFilesystem:
                 files.append(virtual_path)
         return sorted(files)
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Delete the entire session directory."""
         if self.root_dir.exists():
             shutil.rmtree(self.root_dir)
@@ -294,6 +296,6 @@ class DiskFilesystem:
         """Get the absolute path to the session directory.
 
         Returns:
-            Absolute path as string
+            str: Absolute path as string
         """
         return str(self.root_dir.absolute())
