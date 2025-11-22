@@ -140,7 +140,7 @@ def opening_statement_evaluator_prompt(debate_outline, topic, side):
 - 只有当稿件几乎不需要修改、即可用于比赛时，才可判定为通过。
     - 稿件必须清楚定义关键词和比较标准
     - 稿件最多包含 3 个逻辑严密、基于证据的论点，并且必须支持己方立场
-    - 文风必须正式、清晰、自然口语化
+    - 文风必须正式、清晰
     - 必须完全符合开篇立论的要求
 
 {OPENING_STATEMENT_REQUIREMENTS}

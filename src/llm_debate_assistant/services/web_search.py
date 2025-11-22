@@ -56,6 +56,33 @@ class ArgumentEvidence:
 # ==============================================================
 
 
+def _extract_text_from_response(response: Any) -> str:
+    """Extract text content from response parts, avoiding the non-text parts warning.
+
+    Args:
+        response (Any): The Gemini API response object
+
+    Returns:
+        str: Concatenated text from all text parts
+    """
+    if not (hasattr(response, "candidates") and response.candidates):
+        return ""
+
+    candidate = response.candidates[0]
+    if not hasattr(candidate, "content") or not candidate.content:
+        return ""
+
+    if not hasattr(candidate.content, "parts") or not candidate.content.parts:
+        return ""
+
+    text_parts = []
+    for part in candidate.content.parts:
+        if hasattr(part, "text") and part.text:
+            text_parts.append(part.text)
+
+    return "".join(text_parts)
+
+
 def _extract_search_metadata(response: Any) -> dict[str, Any]:
     """private method to extract search metadata from Gemini response.
 
@@ -66,7 +93,7 @@ def _extract_search_metadata(response: Any) -> dict[str, Any]:
         dict[str, Any]: A dictionary containing extracted metadata and search results
     """
     result: dict[str, Any] = {
-        "text": response.text if response.text else "",
+        "text": _extract_text_from_response(response),
         "grounding_metadata": None,
         "search_results": [],
     }
@@ -101,12 +128,13 @@ def _extract_search_metadata(response: Any) -> dict[str, Any]:
     return result
 
 
-def search_web(query: str, model: str = "gemini-2.5-pro") -> dict[str, Any]:
+def search_web(query: str, model: str = "gemini-3-pro-preview") -> dict[str, Any]:
     """Search the web using Gemini with Google Search grounding.
 
     Args:
         query (str): The search query
-        model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-pro".
+        model (str, optional): The Gemini model to use.
+            Defaults to "gemini-3-pro-preview".
 
     Returns:
         dict[str, Any]: A dictionary containing search results and metadata
@@ -137,7 +165,9 @@ def search_web(query: str, model: str = "gemini-2.5-pro") -> dict[str, Any]:
     return _extract_search_metadata(response)
 
 
-async def async_search_web(query: str, model: str = "gemini-2.5-pro") -> dict[str, Any]:
+async def async_search_web(
+    query: str, model: str = "gemini-3-pro-preview"
+) -> dict[str, Any]:
     """Search the web using Gemini with Google Search grounding.
 
     Args:
@@ -223,7 +253,7 @@ def search_for_evidence(
     evidence_needed: list[str],
     topic: str,
     side: str,
-    model: str = "gemini-2.5-pro",
+    model: str = "gemini-3-pro-preview",
     feedback: str | None = None,
 ) -> dict:
     """Search for evidence to support a debate argument.
@@ -253,7 +283,7 @@ async def async_search_for_evidence(
     evidence_needed: list[str],
     topic: str,
     side: str,
-    model: str = "gemini-2.5-pro",
+    model: str = "gemini-3-pro-preview",
     feedback: str | None = None,
 ) -> dict:
     """Search for evidence to support a debate argument asynchronously.
@@ -283,7 +313,7 @@ async def async_search_for_evidence_threaded(
     evidence_needed: list[str],
     topic: str,
     side: str,
-    model: str = "gemini-2.5-pro",
+    model: str = "gemini-3-pro-preview",
     feedback: str | None = None,
 ) -> dict:
     """Search for evidence using thread-based async.
@@ -328,7 +358,7 @@ async def search_multiple_arguments(
     arguments: list[tuple[str, str, list[str]]],
     topic: str,
     side: str,
-    model: str = "gemini-2.5-pro",
+    model: str = "gemini-3-pro-preview",
     use_threaded: bool = False,
     feedback: str | None = None,
 ) -> list[ArgumentEvidence]:
@@ -403,7 +433,7 @@ async def search_multiple_arguments_threaded(
     arguments: list[tuple[str, str, list[str]]],
     topic: str,
     side: str,
-    model: str = "gemini-2.5-pro",
+    model: str = "gemini-3-pro-preview",
 ) -> list[ArgumentEvidence]:
     """Search for evidence for multiple arguments using thread-based async.
 

@@ -16,7 +16,7 @@ DEFAULT_OPENAI_MODEL = "gpt-5.1-2025-11-13"
 
 def get_llm(
     temperature: float = 0.0,
-    provider: Literal["gemini", "openai"] = "gemini",
+    provider: Literal["gemini", "openai"] = "openai",  # Changed to openai for testing
     model: str | None = None,
 ) -> BaseChatModel:
     """Get a configured LLM instance.
@@ -34,11 +34,20 @@ def get_llm(
         ValueError: If an unsupported provider is specified.
     """
     if provider == "gemini":
-        return ChatGoogleGenerativeAI(
-            model=model or DEFAULT_GEMINI_MODEL,
-            api_key=app_config.api_keys.gemini_api_key,
-            temperature=temperature,
-        )
+        model_name = model or DEFAULT_GEMINI_MODEL
+        kwargs = {
+            "model": model_name,
+            "api_key": app_config.api_keys.gemini_api_key,
+            "temperature": temperature,
+        }
+        # Gemini 3 Pro is a thinking model - configure thinking parameters
+        if "gemini-3" in model_name:
+            kwargs["thinking_budget"] = -1  # -1 for default/unlimited
+            # NOTE: include_thoughts=True can cause empty responses
+            # when used with tool calling
+            # Disable it for now to fix the empty response issue
+            kwargs["include_thoughts"] = False
+        return ChatGoogleGenerativeAI(**kwargs)
     elif provider == "openai":
         return ChatOpenAI(
             model=model or DEFAULT_OPENAI_MODEL,

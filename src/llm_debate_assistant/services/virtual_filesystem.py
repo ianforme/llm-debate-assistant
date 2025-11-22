@@ -20,7 +20,7 @@ class VirtualFilesystem:
     process ends. No disk I/O is performed.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.files: Dict[str, str] = {}
 
     def write(self, path: str, content: str) -> Dict[str, Any]:
