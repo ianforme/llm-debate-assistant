@@ -12,7 +12,7 @@ from llm_debate_assistant.prompts import opening_statement_prompts
 from llm_debate_assistant.services.llm import get_llm
 from ...reflection_pattern.schema import Evaluation, OpeningStatement
 from ..schema import DeepPrepState
-from .. import console
+from ..console import console
 from .helpers import load_outline_from_fs, load_evidence_analysis, load_current_draft
 
 

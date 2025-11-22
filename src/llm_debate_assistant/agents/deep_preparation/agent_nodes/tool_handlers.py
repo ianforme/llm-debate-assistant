@@ -10,7 +10,7 @@ from typing import Any, Callable, Coroutine, Dict, cast
 from langchain_core.runnables import RunnableConfig
 from rich.table import Table
 
-from .. import console
+from ..console import console
 from ..schema import DeepPrepState
 from ..operations import (
     create_outline_node_fs,

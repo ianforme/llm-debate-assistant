@@ -11,7 +11,7 @@ from typing import Any, Dict, cast
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
-from .. import console
+from ..console import console
 from ..schema import DeepPrepState
 from ..operations import (
     evaluate_statement_node_fs,

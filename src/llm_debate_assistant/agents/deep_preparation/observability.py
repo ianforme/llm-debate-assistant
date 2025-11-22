@@ -14,7 +14,7 @@ from typing import Optional
 import tiktoken
 from tiktoken import Encoding
 
-from . import console
+from .console import console
 
 # ============================================================================
 # Token Tracking

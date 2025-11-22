@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from langchain_core.runnables import RunnableConfig
 
-from .. import console
+from ..console import console
 from llm_debate_assistant.services.llm import get_llm
 
 

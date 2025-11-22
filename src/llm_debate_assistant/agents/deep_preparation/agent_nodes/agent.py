@@ -11,7 +11,7 @@ from typing import Any, Dict, cast
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 
-from .. import console
+from ..console import console
 from ..schema import DeepPrepState
 from ..tools import ALL_TOOLS
 from ..observability import (
