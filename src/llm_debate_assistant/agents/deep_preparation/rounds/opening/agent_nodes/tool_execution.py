@@ -11,21 +11,25 @@ from typing import Any, Dict, cast
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
-from ..console import console
-from ..schema import DeepPrepState
-from ..operations import (
+from llm_debate_assistant.agents.deep_preparation.console import console
+from llm_debate_assistant.agents.deep_preparation.schema import DeepPrepState
+from llm_debate_assistant.agents.deep_preparation.rounds.opening.operations import (
     evaluate_statement_node_fs,
     improve_statement_node_fs,
 )
-from ..storage import save_draft_to_filesystem
-from ..observability import log_tool_output
-from .helpers import build_selective_state
-from .tool_handlers import TOOL_HANDLERS
+from llm_debate_assistant.agents.deep_preparation.storage import (
+    save_draft_to_filesystem,
+)
+from llm_debate_assistant.agents.deep_preparation.observability import log_tool_output
+from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.helpers import (
+    build_selective_state,
+)
+from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.tool_handlers import (
+    TOOL_HANDLERS,
+)
 
 
-async def tool_execution_node(
-    state: DeepPrepState, config: RunnableConfig
-) -> Dict[str, Any]:
+async def tool_execution_node(state: DeepPrepState, config: RunnableConfig) -> Dict[str, Any]:
     """Execute the tools requested by the agent.
 
     This node inspects the last message for tool calls and executes them,
@@ -247,15 +251,12 @@ async def _run_improvement_loop(
         new_result_status = new_evaluation.get("evaluation_result", "unknown")
         new_iteration = new_evaluation.get("iteration_number", current_iteration + 1)
         console.print(
-            f"[dim]  📊 Auto-evaluation (iteration {new_iteration}): "
-            f"{new_result_status}[/dim]"
+            f"[dim]  📊 Auto-evaluation (iteration {new_iteration}): " f"{new_result_status}[/dim]"
         )
 
         # Log completion status
         if new_result_status == "pass":
-            console.print(
-                "[bold green]✅ 评估通过！【评估与改进】步骤已完成。[/bold green]"
-            )
+            console.print("[bold green]✅ 评估通过！【评估与改进】步骤已完成。[/bold green]")
         elif new_iteration >= max_iterations:
             console.print(
                 f"[bold yellow]⚠️ 已达到最大迭代次数（{max_iterations}）。\n"

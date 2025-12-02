@@ -18,13 +18,15 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from .agent_nodes import (
+from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes import (
     agent_node,
     tool_execution_node,
     should_continue,
 )
-from .storage import initialize_filesystem_node
-from .schema import DeepPrepState
+from llm_debate_assistant.agents.deep_preparation.storage import (
+    initialize_filesystem_node,
+)
+from llm_debate_assistant.agents.deep_preparation.schema import DeepPrepState
 
 
 def create_deep_prep_workflow(

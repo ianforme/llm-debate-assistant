@@ -10,9 +10,9 @@ from rich.panel import Panel
 
 from llm_debate_assistant.prompts import opening_statement_prompts
 from llm_debate_assistant.services.llm import get_llm
-from ...reflection_pattern.schema import Evaluation, OpeningStatement
-from ..schema import DeepPrepState
-from ..console import console
+from llm_debate_assistant.agents.reflection_pattern.schema import Evaluation, OpeningStatement
+from llm_debate_assistant.agents.deep_preparation.schema import DeepPrepState
+from llm_debate_assistant.agents.deep_preparation.console import console
 from .helpers import load_outline_from_fs, load_evidence_analysis, load_current_draft
 
 
@@ -37,9 +37,7 @@ async def evaluate_statement_node_fs(
     for kw in outline.get("keyword_definitions", []):
         debate_outline_parts.append(f"- {kw['keyword']}: {kw['definition']}")
 
-    debate_outline_parts.append(
-        f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n"
-    )
+    debate_outline_parts.append(f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n")
 
     debate_outline_parts.append("## 论点框架")
     for i, arg in enumerate(outline.get("arguments", []), 1):
@@ -119,9 +117,7 @@ async def evaluate_statement_node_fs(
     }
 
 
-async def improve_statement_node_fs(
-    state: DeepPrepState, config: RunnableConfig
-) -> dict[str, Any]:
+async def improve_statement_node_fs(state: DeepPrepState, config: RunnableConfig) -> dict[str, Any]:
     """Improve opening statement based on evaluation feedback (filesystem-aware).
 
     Reads outline and draft from filesystem to save tokens.
@@ -144,9 +140,7 @@ async def improve_statement_node_fs(
     for kw in outline.get("keyword_definitions", []):
         debate_outline_parts.append(f"- {kw['keyword']}: {kw['definition']}")
 
-    debate_outline_parts.append(
-        f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n"
-    )
+    debate_outline_parts.append(f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n")
 
     debate_outline_parts.append("## 论点与完整证据\n")
 

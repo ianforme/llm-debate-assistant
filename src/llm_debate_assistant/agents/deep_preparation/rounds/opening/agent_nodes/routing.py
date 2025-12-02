@@ -6,7 +6,7 @@ from typing import Literal
 
 from langchain_core.messages import AIMessage
 
-from ..schema import DeepPrepState
+from llm_debate_assistant.agents.deep_preparation.schema import DeepPrepState
 
 
 def should_continue(state: DeepPrepState) -> Literal["continue", "end"]:
@@ -33,9 +33,7 @@ def should_continue(state: DeepPrepState) -> Literal["continue", "end"]:
         max_iterations = state.get("max_iterations", 3)
 
         # Check if evaluation step is complete
-        is_evaluation_complete = (
-            evaluation_result == "pass" or current_iteration >= max_iterations
-        )
+        is_evaluation_complete = evaluation_result == "pass" or current_iteration >= max_iterations
 
         # Check if all required artifacts exist
         has_all_artifacts = (
@@ -58,17 +56,13 @@ def should_continue(state: DeepPrepState) -> Literal["continue", "end"]:
     has_draft = bool(state.get("draft"))
     has_evaluation = bool(state.get("evaluation"))
 
-    workflow_incomplete = not (
-        has_outline and has_evidence and has_draft and has_evaluation
-    )
+    workflow_incomplete = not (has_outline and has_evidence and has_draft and has_evaluation)
 
     if workflow_incomplete:
         # Check todos for pending work
         todos = state.get("todos", [])
         pending_todos = (
-            [t for t in todos if t.get("status") in ("pending", "in_progress")]
-            if todos
-            else []
+            [t for t in todos if t.get("status") in ("pending", "in_progress")] if todos else []
         )
 
         if pending_todos or not todos:

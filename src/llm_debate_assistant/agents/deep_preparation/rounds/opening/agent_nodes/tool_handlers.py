@@ -10,22 +10,28 @@ from typing import Any, Callable, Coroutine, Dict, cast
 from langchain_core.runnables import RunnableConfig
 from rich.table import Table
 
-from ..console import console
-from ..schema import DeepPrepState
-from ..operations import (
+from llm_debate_assistant.agents.deep_preparation.console import console
+from llm_debate_assistant.agents.deep_preparation.schema import DeepPrepState
+from llm_debate_assistant.agents.deep_preparation.rounds.opening.operations import (
     create_outline_node_fs,
     search_evidence_node_fs,
     draft_statement_node_fs,
     evaluate_statement_node_fs,
     improve_statement_node_fs,
 )
-from ..storage import (
+from llm_debate_assistant.agents.deep_preparation.storage import (
     save_outline_to_filesystem,
     save_evidence_to_filesystem,
     save_draft_to_filesystem,
 )
-from ..observability import count_tokens, log_compaction
-from .helpers import build_selective_state, summarize_evaluation_feedback
+from llm_debate_assistant.agents.deep_preparation.observability import (
+    count_tokens,
+    log_compaction,
+)
+from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.helpers import (
+    build_selective_state,
+    summarize_evaluation_feedback,
+)
 
 # Type alias for tool handler functions
 ToolHandler = Callable[
@@ -46,9 +52,7 @@ async def handle_create_outline(
     state_updates: Dict[str, Any],
 ) -> str:
     """Handle create_outline_tool execution."""
-    selective_state = build_selective_state(
-        current_state, ["topic", "side", "filesystem"]
-    )
+    selective_state = build_selective_state(current_state, ["topic", "side", "filesystem"])
     result = await create_outline_node_fs(cast(DeepPrepState, selective_state), config)
     state_updates.update(result)
 
@@ -115,9 +119,7 @@ async def handle_draft_statement(
     state_updates.update(result)
 
     # Automatically save draft
-    save_result = save_draft_to_filesystem(
-        cast(DeepPrepState, {**current_state, **state_updates})
-    )
+    save_result = save_draft_to_filesystem(cast(DeepPrepState, {**current_state, **state_updates}))
     state_updates.update(save_result)
 
     draft = result.get("draft", "")
@@ -149,9 +151,7 @@ async def handle_evaluate_statement(
             "filesystem",
         ],
     )
-    result = await evaluate_statement_node_fs(
-        cast(DeepPrepState, selective_state), config
-    )
+    result = await evaluate_statement_node_fs(cast(DeepPrepState, selective_state), config)
     state_updates.update(result)
 
     evaluation = result.get("evaluation", {})
@@ -194,9 +194,7 @@ async def handle_evaluate_statement(
     if result_status == "pass":
         return base_msg + "\n\n✅ 评估通过！工作流程已完成。"
     elif current_iteration >= max_iterations:
-        return (
-            base_msg + f"\n\n⚠️ 已达到最大迭代次数（{max_iterations}）。工作流程结束。"
-        )
+        return base_msg + f"\n\n⚠️ 已达到最大迭代次数（{max_iterations}）。工作流程结束。"
     else:
         return base_msg + "\n\n⚠️ **立即调用** improve_statement_tool 改进立论稿"
 
@@ -221,15 +219,11 @@ async def handle_improve_statement(
             "filesystem",
         ],
     )
-    result = await improve_statement_node_fs(
-        cast(DeepPrepState, selective_state), config
-    )
+    result = await improve_statement_node_fs(cast(DeepPrepState, selective_state), config)
     state_updates.update(result)
 
     # Automatically save improved draft
-    save_result = save_draft_to_filesystem(
-        cast(DeepPrepState, {**current_state, **state_updates})
-    )
+    save_result = save_draft_to_filesystem(cast(DeepPrepState, {**current_state, **state_updates}))
     state_updates.update(save_result)
 
     draft = result.get("draft", "")
@@ -290,9 +284,7 @@ async def handle_read_file(
         if "not found" in error_msg.lower() or "does not exist" in error_msg.lower():
             suggestions.append("文件不存在。常见文件路径：")
             suggestions.append("  - 大纲：/outline.json 或 /outline.md")
-            suggestions.append(
-                "  - 证据：/evidence/argument_0.json, /evidence/argument_1.json 等"
-            )
+            suggestions.append("  - 证据：/evidence/argument_0.json, /evidence/argument_1.json 等")
             suggestions.append("  - 草稿：/current_draft.md")
             suggestions.append("使用文件系统工具检查哪些文件存在。")
 
@@ -310,10 +302,7 @@ async def handle_write_todos(
 ) -> str:
     """Handle write_todos_tool execution."""
     if "todos" not in tool_args or not tool_args["todos"]:
-        return (
-            "⚠️ 错误：调用 `write_todos_tool` 时未提供 `todos` 列表。"
-            "请提供待办事项列表。"
-        )
+        return "⚠️ 错误：调用 `write_todos_tool` 时未提供 `todos` 列表。" "请提供待办事项列表。"
 
     todos = tool_args["todos"]
 
@@ -337,9 +326,7 @@ async def handle_write_todos(
     pending = sum(1 for t in todos_list if t.get("status") == "pending")
 
     # Create and print a rich table for todos
-    table = Table(
-        title="Todo List Status", show_header=True, header_style="bold magenta"
-    )
+    table = Table(title="Todo List Status", show_header=True, header_style="bold magenta")
     table.add_column("Status", style="dim", width=12)
     table.add_column("Task")
 
@@ -365,8 +352,7 @@ async def handle_write_todos(
     console.print(table)
 
     return (
-        f"📋 已更新待办事项：{completed} 个已完成，"
-        f"{in_progress} 个进行中，{pending} 个待处理"
+        f"📋 已更新待办事项：{completed} 个已完成，" f"{in_progress} 个进行中，{pending} 个待处理"
     )
 
 
@@ -398,14 +384,9 @@ async def handle_update_todo_status(
 
     task_content = todos_list[task_index].get("content", "未知任务")
 
-    console.print(
-        f"[dim]  [Partial update] Task {task_index}: {old_status} → {new_status}[/dim]"
-    )
+    console.print(f"[dim]  [Partial update] Task {task_index}: {old_status} → {new_status}[/dim]")
 
-    return (
-        f"✅ 已更新任务 {task_index}：{task_content}\n"
-        f"状态：{old_status} → {new_status}"
-    )
+    return f"✅ 已更新任务 {task_index}：{task_content}\n" f"状态：{old_status} → {new_status}"
 
 
 async def handle_mark_todo_complete(

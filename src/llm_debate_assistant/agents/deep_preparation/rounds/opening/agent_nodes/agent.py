@@ -11,10 +11,10 @@ from typing import Any, Dict, cast
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
 
-from ..console import console
-from ..schema import DeepPrepState
-from ..tools import ALL_TOOLS
-from ..observability import (
+from llm_debate_assistant.agents.deep_preparation.console import console
+from llm_debate_assistant.agents.deep_preparation.schema import DeepPrepState
+from llm_debate_assistant.agents.deep_preparation.shared.tools import ALL_TOOLS
+from llm_debate_assistant.agents.deep_preparation.observability import (
     extract_token_usage,
     get_token_usage,
     update_token_usage,
@@ -22,8 +22,12 @@ from ..observability import (
     log_token_usage,
 )
 from llm_debate_assistant.services.llm import get_llm
-from .prompts import DEEP_PREP_SYSTEM_PROMPT
-from .helpers import build_task_list_section
+from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.prompts import (
+    DEEP_PREP_SYSTEM_PROMPT,
+)
+from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.helpers import (
+    build_task_list_section,
+)
 
 
 async def agent_node(state: DeepPrepState, config: RunnableConfig) -> Dict[str, Any]:
@@ -86,9 +90,7 @@ async def agent_node(state: DeepPrepState, config: RunnableConfig) -> Dict[str, 
                     "(possibly context overflow or rate limit)"
                 )
                 if attempt < max_retries:
-                    console.print(
-                        f"[yellow]Retrying ({attempt + 1}/{max_retries})...[/yellow]"
-                    )
+                    console.print(f"[yellow]Retrying ({attempt + 1}/{max_retries})...[/yellow]")
                     await asyncio.sleep(2)
                     continue
                 else:

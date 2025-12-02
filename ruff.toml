@@ -5,7 +5,7 @@ exclude = [
     "__pycache__",
 ]
 
-line-length = 88  # Match black's line length
+line-length = 100  # Accommodate absolute import paths
 
 [lint]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
@@ -18,3 +18,4 @@ ignore = []
 "src/llm_debate_assistant/utils/style_cards.py" = ["E501"]
 "src/llm_debate_assistant/utils/helpers.py" = ["E501"]
 "src/llm_debate_assistant/core/*.py" = ["E501"]
+"src/llm_debate_assistant/agents/**/*.py" = ["E501"]  # Long absolute imports after refactoring

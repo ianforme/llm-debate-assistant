@@ -5,7 +5,7 @@ Helper functions for loading data from filesystem or state.
 import json
 from typing import Any
 
-from ..schema import DeepPrepState
+from llm_debate_assistant.agents.deep_preparation.schema import DeepPrepState
 
 
 def load_outline_from_fs(state: DeepPrepState) -> dict[str, Any]:

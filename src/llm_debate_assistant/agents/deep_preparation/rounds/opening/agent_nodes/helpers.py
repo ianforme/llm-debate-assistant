@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from langchain_core.runnables import RunnableConfig
 
-from ..console import console
+from llm_debate_assistant.agents.deep_preparation.console import console
 from llm_debate_assistant.services.llm import get_llm
 
 
@@ -130,8 +130,7 @@ def build_task_list_section(todos: List[Dict[str, Any]], state: Dict[str, Any]) 
     pending = sum(1 for t in todos if t.get("status") == "pending")
 
     task_lines.append(
-        f"\nProgress: {completed} completed, {in_progress} in progress, "
-        f"{pending} pending"
+        f"\nProgress: {completed} completed, {in_progress} in progress, " f"{pending} pending"
     )
 
     # Add iteration info if in evaluation phase

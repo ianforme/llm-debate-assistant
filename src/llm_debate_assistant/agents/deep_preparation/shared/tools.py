@@ -13,26 +13,20 @@ class TodoItem(BaseModel):
 class WriteTodosInput(BaseModel):
     """Input schema for write_todos tool."""
 
-    todos: List[TodoItem] = Field(
-        description="List of todo items with content and status"
-    )
+    todos: List[TodoItem] = Field(description="List of todo items with content and status")
 
 
 class UpdateTodoStatusInput(BaseModel):
     """Input schema for update_todo_status tool (partial update)."""
 
     task_index: int = Field(description="Index of the task to update (0-based)")
-    status: str = Field(
-        description="New status: 'pending', 'in_progress', or 'completed'"
-    )
+    status: str = Field(description="New status: 'pending', 'in_progress', or 'completed'")
 
 
 class MarkTodoCompleteInput(BaseModel):
     """Input schema for mark_todo_complete tool (partial update)."""
 
-    task_index: int = Field(
-        description="Index of the task to mark as completed (0-based)"
-    )
+    task_index: int = Field(description="Index of the task to mark as completed (0-based)")
 
 
 class WriteFileInput(BaseModel):
@@ -51,9 +45,7 @@ class ReadFileInput(BaseModel):
 class SearchEvidenceInput(BaseModel):
     """Input schema for search_evidence tool."""
 
-    argument_claims: List[str] = Field(
-        description="List of argument claims to search evidence for"
-    )
+    argument_claims: List[str] = Field(description="List of argument claims to search evidence for")
     search_queries: Optional[List[str]] = Field(
         default=None,
         description="Optional custom search queries (one per claim)",
