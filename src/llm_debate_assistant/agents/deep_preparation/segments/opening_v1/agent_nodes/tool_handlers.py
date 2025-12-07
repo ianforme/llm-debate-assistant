@@ -12,12 +12,12 @@ from rich.table import Table
 
 from llm_debate_assistant.agents.deep_preparation.console import console
 from llm_debate_assistant.agents.deep_preparation.schema import DeepPrepState
-from llm_debate_assistant.agents.deep_preparation.rounds.opening.operations import (
-    create_outline_node_fs,
-    search_evidence_node_fs,
-    draft_statement_node_fs,
-    evaluate_statement_node_fs,
-    improve_statement_node_fs,
+from llm_debate_assistant.agents.deep_preparation.segments.opening.operations import (  # type: ignore[attr-defined]
+    create_outline_node_fs,  # type: ignore[attr-defined]
+    search_evidence_node_fs,  # type: ignore[attr-defined]
+    draft_statement_node_fs,  # type: ignore[attr-defined]
+    evaluate_statement_node_fs,  # type: ignore[attr-defined]
+    improve_statement_node_fs,  # type: ignore[attr-defined]
 )
 from llm_debate_assistant.agents.deep_preparation.storage import (
     save_outline_to_filesystem,
@@ -28,7 +28,7 @@ from llm_debate_assistant.agents.deep_preparation.observability import (
     count_tokens,
     log_compaction,
 )
-from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.helpers import (
+from llm_debate_assistant.agents.deep_preparation.segments.opening.agent_nodes.helpers import (  # type: ignore[import-untyped]
     build_selective_state,
     summarize_evaluation_feedback,
 )

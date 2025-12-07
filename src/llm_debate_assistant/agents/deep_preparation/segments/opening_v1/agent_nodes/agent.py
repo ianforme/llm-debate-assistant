@@ -22,10 +22,10 @@ from llm_debate_assistant.agents.deep_preparation.observability import (
     log_token_usage,
 )
 from llm_debate_assistant.services.llm import get_llm
-from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.prompts import (
+from llm_debate_assistant.agents.deep_preparation.segments.opening.agent_nodes.prompts import (  # type: ignore[import-untyped]
     DEEP_PREP_SYSTEM_PROMPT,
 )
-from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.helpers import (
+from llm_debate_assistant.agents.deep_preparation.segments.opening.agent_nodes.helpers import (  # type: ignore[import-untyped]
     build_task_list_section,
 )
 

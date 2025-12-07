@@ -13,18 +13,18 @@ from langchain_core.runnables import RunnableConfig
 
 from llm_debate_assistant.agents.deep_preparation.console import console
 from llm_debate_assistant.agents.deep_preparation.schema import DeepPrepState
-from llm_debate_assistant.agents.deep_preparation.rounds.opening.operations import (
-    evaluate_statement_node_fs,
-    improve_statement_node_fs,
+from llm_debate_assistant.agents.deep_preparation.segments.opening.operations import (  # type: ignore[attr-defined]
+    evaluate_statement_node_fs,  # type: ignore[attr-defined]
+    improve_statement_node_fs,  # type: ignore[attr-defined]
 )
 from llm_debate_assistant.agents.deep_preparation.storage import (
     save_draft_to_filesystem,
 )
 from llm_debate_assistant.agents.deep_preparation.observability import log_tool_output
-from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.helpers import (
+from llm_debate_assistant.agents.deep_preparation.segments.opening.agent_nodes.helpers import (  # type: ignore[import-untyped]
     build_selective_state,
 )
-from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes.tool_handlers import (
+from llm_debate_assistant.agents.deep_preparation.segments.opening.agent_nodes.tool_handlers import (  # type: ignore[import-untyped]
     TOOL_HANDLERS,
 )
 

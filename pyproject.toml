@@ -51,6 +51,11 @@ audio = [
     "sounddevice"
 ]
 
+[tool.mypy]
+exclude = [
+    "src/llm_debate_assistant/agents/deep_preparation/segments/opening_v1/"
+]
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

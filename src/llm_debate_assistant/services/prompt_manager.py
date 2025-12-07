@@ -53,6 +53,11 @@ class PromptManager:
                 "VALUE_ADVOCACY_PROMPT",
                 "COMPARATIVE_ANALYSIS_PROMPT",
                 "EVIDENCE_EXTRACTION_PROMPT",
+                "DEEP_EVIDENCE_PROMPT",
+                "OPENING_DRAFT_PROMPT",
+                "OPENING_EVALUATION_PROMPT",
+                "OPENING_IMPROVEMENT_PROMPT",
+                "OPENING_STRATEGY_SELECTION_PROMPT",
             ]
 
         if client:

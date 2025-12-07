@@ -18,7 +18,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from llm_debate_assistant.agents.deep_preparation.rounds.opening.agent_nodes import (
+from llm_debate_assistant.agents.deep_preparation.segments.opening.agent_nodes import (  # type: ignore[import-untyped]
     agent_node,
     tool_execution_node,
     should_continue,
