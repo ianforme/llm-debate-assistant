@@ -213,3 +213,6 @@ notebook/playground.ipynb
 
 # Temp files for deep preparation agent
 .temp/
+
+# Documentation
+docs/
