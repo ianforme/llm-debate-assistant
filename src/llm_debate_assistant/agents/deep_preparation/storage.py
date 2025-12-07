@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, Literal, Optional, cast
 
 from llm_debate_assistant.services.disk_filesystem import DiskFilesystem
@@ -8,27 +9,131 @@ from llm_debate_assistant.services.virtual_filesystem import VirtualFilesystem
 from .schema import DeepPrepState, Filesystem
 
 
+# ============================================================================
+# Session Management
+# ============================================================================
+
+
+def save_session_metadata(
+    filesystem: Filesystem,
+    topic: str,
+    side: Literal["正方", "反方"],
+    segment: str = "topic_research",
+) -> None:
+    """Save session metadata for cache lookup.
+
+    Args:
+        filesystem: Filesystem instance to save metadata to
+        topic: Debate topic
+        side: Our side (正方 or 反方)
+        segment: Which segment this session is for (e.g., "topic_research")
+    """
+    metadata = {
+        "topic": topic,
+        "side": side,
+        "segment": segment,
+        "created_at": datetime.now().isoformat(),
+    }
+    filesystem.write("/_metadata.json", json.dumps(metadata, ensure_ascii=False))
+
+
+def find_session_by_topic(
+    topic: str,
+    side: Literal["正方", "反方"],
+    segment: str = "topic_research",
+    root_dir: Optional[Path] = None,
+) -> Optional[str]:
+    """Find existing session matching topic and side.
+
+    Searches all sessions in the root directory for one matching the
+    given topic, side, and segment. Returns the most recent match.
+
+    Args:
+        topic: Debate topic to search for
+        side: Side to search for (正方 or 反方)
+        segment: Segment type (default: "topic_research")
+        root_dir: Root directory for sessions (default: .temp/debate_preparation_sessions)
+
+    Returns:
+        Optional[str]: Session ID of most recent match, or None if not found
+    """
+    if root_dir is None:
+        root_dir = Path.cwd() / ".temp" / "debate_preparation_sessions"
+
+    if not root_dir.exists():
+        return None
+
+    matches = []
+
+    for session_dir in root_dir.iterdir():
+        if not session_dir.is_dir():
+            continue
+
+        metadata_path = session_dir / "_metadata.json"
+        if not metadata_path.exists():
+            continue
+
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+
+            # Check if this session matches our criteria
+            if (
+                metadata.get("topic") == topic
+                and metadata.get("side") == side
+                and metadata.get("segment") == segment
+            ):
+                created_at = metadata.get("created_at", "")
+                matches.append((created_at, session_dir.name))
+        except (json.JSONDecodeError, IOError):
+            # Skip invalid metadata files
+            continue
+
+    if matches:
+        # Return most recent session ID
+        return max(matches)[1]
+
+    return None
+
+
 def create_filesystem(
     filesystem_type: Literal["virtual", "disk"] = "disk",
     session_id: Optional[str] = None,
-) -> tuple[Filesystem, Optional[str]]:
+    topic: Optional[str] = None,
+    side: Optional[Literal["正方", "反方"]] = None,
+    segment: str = "topic_research",
+    use_cache: bool = True,
+) -> tuple[Filesystem, Optional[str], bool]:
     """Factory function to create either virtual or disk filesystem.
 
+    If topic and side are provided, will search for existing session
+    matching those criteria and reuse it if use_cache=True.
+
     Args:
-        filesystem_type (Literal["virtual", "disk"]): Type of filesystem
-            to create ("virtual" or "disk")
-        session_id (Optional[str]): Optional session ID (only used for disk
-            filesystem)
+        filesystem_type: Type of filesystem to create ("virtual" or "disk")
+        session_id: Optional session ID (only used for disk filesystem)
+        topic: Optional debate topic (for cache lookup)
+        side: Optional side (正方 or 反方, for cache lookup)
+        segment: Segment type (default: "topic_research")
+        use_cache: Whether to search for and reuse existing sessions
 
     Returns:
-        tuple[Filesystem, Optional[str]]: Tuple of (filesystem instance,
-            session path or None)
+        tuple[Filesystem, Optional[str], bool]: Tuple of (filesystem instance,
+            session path or None, cache_found)
     """
     if filesystem_type == "virtual":
-        return VirtualFilesystem(), None
+        return VirtualFilesystem(), None, False
     elif filesystem_type == "disk":
+        cache_found = False
+
+        # Try to find existing session if topic/side provided and caching enabled
+        if use_cache and topic and side and session_id is None:
+            cached_session_id = find_session_by_topic(topic, side, segment)
+            if cached_session_id:
+                session_id = cached_session_id
+                cache_found = True
+
         fs = DiskFilesystem(session_id=session_id)
-        return fs, fs.get_session_path()
+        return fs, fs.get_session_path(), cache_found
     else:
         raise ValueError(f"Unknown filesystem_type: {filesystem_type}")
 
@@ -55,7 +160,7 @@ def initialize_filesystem_node(
             initialized, else empty
     """
     if state.get("filesystem") is None:
-        filesystem, session_path = create_filesystem(filesystem_type, session_id)
+        filesystem, session_path, _ = create_filesystem(filesystem_type, session_id)
         return {
             "filesystem": filesystem,
             "filesystem_path": session_path,
