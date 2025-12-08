@@ -1,20 +1,29 @@
 """
-Observability utilities for agent workflow monitoring.
+Tracing and logging utilities for agent workflow monitoring.
 
-This module provides functions for:
+This module provides:
+- Shared Rich Console instance for consistent output
 - Accurate token counting using tiktoken
 - Extracting token usage from API responses (OpenAI/Gemini)
 - Tracking cumulative token usage across a workflow
 - Logging message statistics (counts, chars, tokens)
 - Formatting verbose output for debugging
+
+Traces workflow execution, resource consumption, and message flow.
 """
 
 from typing import Optional
 
 import tiktoken
 from tiktoken import Encoding
+from rich.console import Console
 
-from .console import console
+# ============================================================================
+# Shared Console Instance
+# ============================================================================
+
+# Global console object for consistent output across all modules
+console = Console()
 
 # ============================================================================
 # Token Tracking
@@ -154,9 +163,7 @@ def get_message_content_length(msg) -> int:
     return 0
 
 
-def log_message_stats(
-    messages: list, label: str = "Message Stats", verbose: bool = True
-) -> int:
+def log_message_stats(messages: list, label: str = "Message Stats", verbose: bool = True) -> int:
     """Log statistics about message types and lengths.
 
     Args:
@@ -234,9 +241,7 @@ def log_tool_output(tool_messages: list, verbose: bool = True) -> None:
     )
 
 
-def log_token_usage(
-    actual_usage: dict, cumulative_usage: dict, verbose: bool = True
-) -> None:
+def log_token_usage(actual_usage: dict, cumulative_usage: dict, verbose: bool = True) -> None:
     """Log token usage from an LLM call.
 
     Args:
