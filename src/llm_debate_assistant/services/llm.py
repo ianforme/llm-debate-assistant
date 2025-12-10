@@ -40,8 +40,8 @@ def get_llm(
             "api_key": app_config.api_keys.gemini_api_key,
             "temperature": temperature,
         }
-        # Gemini 3 Pro is a thinking model - configure thinking parameters
-        if "gemini-3" in model_name:
+        # Gemini 2.5 and 3 Pro are thinking models - configure thinking parameters
+        if "gemini-3" in model_name or "gemini-2.5" in model_name:
             kwargs["thinking_budget"] = -1  # -1 for default/unlimited
             # NOTE: include_thoughts=True can cause empty responses
             # when used with tool calling
