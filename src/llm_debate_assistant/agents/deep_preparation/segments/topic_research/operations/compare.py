@@ -43,12 +43,20 @@ async def comparative_analysis(
     # Format core claims
     our_claims_str = "\n".join(f"- {claim}" for claim in our_research.core_claims)
     opponent_claims_str = "\n".join(f"- {claim}" for claim in opponent_research.core_claims)
+
+    # Format value framework
+    our_value_framework_str = (
+        f"价值框架: {our_research.value_framework}\n"
+        f"比较标准: {our_research.comparison_standard}"
+    )
+
     # Assuming the global prompt manager is already initialized
     pm = get_prompt_manager()
     prompt = pm.get("COMPARATIVE_ANALYSIS_PROMPT").format(
         our_side=our_research.side,
         our_claims=our_claims_str,
-        our_args_summary=our_args_summary,
+        our_value_framework=our_value_framework_str,
+        our_evidence_summary=our_args_summary,
         opponent_side=opponent_research.side,
         opponent_claims=opponent_claims_str,
         opponent_args_summary=opponent_args_summary,

@@ -18,10 +18,13 @@ Usage:
 """
 
 import asyncio
+import logging
 from typing import Any, Dict, Literal, Optional, TypedDict
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, END
+
+logger = logging.getLogger(__name__)
 
 from llm_debate_assistant.agents.deep_preparation.segments.topic_research.schema import (
     KeyTerm,
@@ -46,7 +49,6 @@ from llm_debate_assistant.agents.deep_preparation.segments.topic_research.storag
     save_analysis_progress,
     load_research_progress,
 )
-from llm_debate_assistant.agents.deep_preparation.schema import Filesystem
 
 
 # ============================================================================
@@ -55,12 +57,15 @@ from llm_debate_assistant.agents.deep_preparation.schema import Filesystem
 
 
 class TopicResearchState(TypedDict, total=False):
-    """State for topic research graph."""
+    """State for topic research graph.
+
+    Note: Non-serializable dependencies (filesystem) are passed via config["configurable"]
+    for proper checkpointing support.
+    """
 
     # Context inputs
     topic: str
     side: Literal["正方", "反方"]
-    filesystem: Optional[Filesystem]
     use_cache: bool
 
     # Research outputs
@@ -69,6 +74,9 @@ class TopicResearchState(TypedDict, total=False):
     opponent_research: Optional[PerspectiveResearch]
     analysis: Optional[ComparativeAnalysis]
     research_result: Optional[TopicResearchResult]
+
+    # Quality control
+    research_retries: int
 
 
 # ============================================================================
@@ -81,16 +89,18 @@ async def check_cache_node(state: TopicResearchState, config: RunnableConfig) ->
 
     Args:
         state (TopicResearchState): Current state of the research
-        config (RunnableConfig): Runnable configuration for LLM calls
+        config (RunnableConfig): Runnable configuration (expects filesystem in config["configurable"]["filesystem"])
 
     Returns:
         Dict[str, Any]: returns any loaded cached data or empty dict if none found
     """
-    if not state.get("use_cache", True) or not state.get("filesystem"):
+    if not state.get("use_cache", True):
         return {}
 
-    filesystem = state["filesystem"]
-    assert filesystem is not None  # Type narrowing: already checked above
+    # Get filesystem from config instead of state (for serialization)
+    filesystem = config.get("configurable", {}).get("filesystem")
+    if not filesystem:
+        return {}
 
     # First check for complete research
     cached = load_research_from_filesystem(filesystem)
@@ -138,7 +148,7 @@ async def terms_definition_node(
 
     Args:
         state (TopicResearchState): Current state of the research
-        config (RunnableConfig): Runnable configuration for LLM calls
+        config (RunnableConfig): Runnable configuration (expects filesystem in config["configurable"]["filesystem"])
 
     Returns:
         Dict[str, Any]: returns generated key terms or empty dict if already present
@@ -154,7 +164,7 @@ async def terms_definition_node(
     terms = await define_key_terms(topic, our_side, config)
 
     # Save progress for resumability
-    filesystem = state.get("filesystem")
+    filesystem = config.get("configurable", {}).get("filesystem")
     if filesystem is not None:
         save_key_terms_progress(topic, our_side, terms, filesystem)
 
@@ -166,7 +176,7 @@ async def research_node(state: TopicResearchState, config: RunnableConfig) -> Di
 
     Args:
         state (TopicResearchState): Current state of the research
-        config (RunnableConfig): Runnable configuration for LLM calls
+        config (RunnableConfig): Runnable configuration (expects filesystem in config["configurable"]["filesystem"])
 
     Returns:
         Dict[str, Any]: returns research results for both sides or empty dict if already present
@@ -178,15 +188,16 @@ async def research_node(state: TopicResearchState, config: RunnableConfig) -> Di
     topic = state["topic"]
     our_side = state["side"]
     opponent_side: Literal["正方", "反方"] = "反方" if our_side == "正方" else "正方"
+    key_terms = state.get("key_terms", [])
 
     # Research both sides in parallel
     our_research, opponent_research = await asyncio.gather(
-        research_perspective(topic, our_side, config),
-        research_perspective(topic, opponent_side, config),
+        research_perspective(topic, our_side, key_terms, config),
+        research_perspective(topic, opponent_side, key_terms, config),
     )
 
     # Save progress for resumability
-    filesystem = state.get("filesystem")
+    filesystem = config.get("configurable", {}).get("filesystem")
     key_terms = state.get("key_terms")
     if filesystem is not None and key_terms is not None:
         save_research_progress(
@@ -204,12 +215,77 @@ async def research_node(state: TopicResearchState, config: RunnableConfig) -> Di
     }
 
 
+async def sanity_check_node(state: TopicResearchState, config: RunnableConfig) -> Dict[str, Any]:
+    """Quality check for topic research phase.
+
+    Criteria:
+    1. Do we have at least 3 arguments?
+    2. Does each argument have at least one valid search source?
+
+    Args:
+        state (TopicResearchState): Current state of the research
+        config (RunnableConfig): Runnable configuration
+
+    Returns:
+        Dict[str, Any]: Updated state with sanity check routing decision
+    """
+    current_retries = state.get("research_retries", 0)
+
+    # Max retries check - force approve to prevent infinite loop
+    if current_retries >= 3:
+        logger.error(
+            "Max retries (3) reached for topic research. "
+            "Proceeding with potentially weak research."
+        )
+        return {"_sanity_check_result": "approve"}
+
+    our_res = state.get("our_research")
+
+    # 1. Basic completeness check
+    if not our_res or not our_res.arguments:
+        logger.warning("No research or arguments found. Retrying research phase.")
+        return {
+            "research_retries": current_retries + 1,
+            "_sanity_check_result": "reject",
+        }
+
+    if len(our_res.arguments) < 3:
+        logger.warning(
+            f"Only {len(our_res.arguments)} arguments found (need 3). " "Retrying research phase."
+        )
+        return {
+            "research_retries": current_retries + 1,
+            "_sanity_check_result": "reject",
+        }
+
+    # 2. Verify search results (Light Check)
+    # As long as we found something (sources not empty), it passes.
+    # Specific evidence strength is left for later agents to worry about.
+    for arg in our_res.arguments:
+        # Check if evidence exists and has meaningful content
+        if not arg.evidence or len(str(arg.evidence)) < 10:
+            # Logic: if we can't even get a 10-character summary,
+            # this argument might be fabricated or unsearchable
+            logger.warning(
+                f"Argument '{arg.claim[:30]}...' has no backing evidence. "
+                "Retrying research phase."
+            )
+            return {
+                "research_retries": current_retries + 1,
+                "_sanity_check_result": "reject",
+            }
+
+    # All checks passed
+    logger.info("Sanity check passed. Proceeding to analysis.")
+    return {"_sanity_check_result": "approve"}
+
+
 async def analysis_node(state: TopicResearchState, config: RunnableConfig) -> Dict[str, Any]:
     """Perform comparative analysis.
 
     Args:
         state (TopicResearchState): Current state of the research
-        config (RunnableConfig): Runnable configuration for LLM calls
+        config (RunnableConfig): Runnable configuration (expects filesystem in config["configurable"]["filesystem"])
     Returns:
         Dict[str, Any]: returns comparative analysis result or empty dict if already present
     """
@@ -227,7 +303,7 @@ async def analysis_node(state: TopicResearchState, config: RunnableConfig) -> Di
     analysis_result = await comparative_analysis(our_research, opponent_research, config)
 
     # Save progress for resumability
-    filesystem = state.get("filesystem")
+    filesystem = config.get("configurable", {}).get("filesystem")
     key_terms = state.get("key_terms")
     if filesystem is not None and key_terms is not None:
         save_analysis_progress(
@@ -248,7 +324,7 @@ async def finalize_node(state: TopicResearchState, config: RunnableConfig) -> Di
 
     Args:
         state (TopicResearchState): Current state of the research
-        config (RunnableConfig): Runnable configuration for LLM calls
+        config (RunnableConfig): Runnable configuration (expects filesystem in config["configurable"]["filesystem"])
 
     Returns:
         Dict[str, Any]: returns final research result or empty dict if already present
@@ -280,7 +356,7 @@ async def finalize_node(state: TopicResearchState, config: RunnableConfig) -> Di
     )
 
     # Save to filesystem if provided
-    filesystem = state.get("filesystem")
+    filesystem = config.get("configurable", {}).get("filesystem")
     if filesystem is not None:
         save_research_to_filesystem(result, filesystem)
 
@@ -290,6 +366,19 @@ async def finalize_node(state: TopicResearchState, config: RunnableConfig) -> Di
 # ============================================================================
 # Routing Functions
 # ============================================================================
+
+
+def route_after_sanity_check(state: TopicResearchState) -> str:
+    """Route based on sanity check result.
+
+    Args:
+        state (TopicResearchState): Current state of the research
+
+    Returns:
+        str: Next node to transition to ("approve" -> analysis, "reject" -> research)
+    """
+    result = state.get("_sanity_check_result", "approve")
+    return result
 
 
 def route_after_cache(state: TopicResearchState) -> str:
@@ -340,13 +429,14 @@ def create_topic_research_graph() -> StateGraph:
         START → check_cache → [route based on cached state]
             ├─ Complete result → finalize
             ├─ Has analysis → finalize
-            ├─ Has research → analysis → finalize
-            ├─ Has terms → research → analysis → finalize
-            └─ Nothing → terms_definition → research → analysis → finalize
+            ├─ Has research → sanity_check → [approve → analysis, reject → research]
+            ├─ Has terms → research → sanity_check → [approve → analysis, reject → research]
+            └─ Nothing → terms_definition → research → sanity_check → [approve → analysis, reject → research]
         All paths → END
 
     The graph supports intelligent resumption from partial cache states,
-    skipping already-completed stages for efficiency.
+    skipping already-completed stages for efficiency. Quality control via sanity_check
+    ensures research meets minimum standards (3+ arguments with evidence), with up to 3 retries.
 
     Returns:
         StateGraph ready for compilation
@@ -361,10 +451,11 @@ def create_topic_research_graph() -> StateGraph:
         >>> state = create_initial_state(
         ...     topic="人工智能的发展利大于弊",
         ...     side="正方",
-        ...     filesystem=filesystem,
         ...     use_cache=True,  # Enable smart resumption
         ... )
-        >>> result = await app.ainvoke(state, {})
+        >>> # Pass filesystem via config for proper serialization
+        >>> config = {"configurable": {"filesystem": filesystem}}
+        >>> result = await app.ainvoke(state, config)
     """
     workflow = StateGraph(TopicResearchState)
 
@@ -372,6 +463,7 @@ def create_topic_research_graph() -> StateGraph:
     workflow.add_node("check_cache", check_cache_node)
     workflow.add_node("terms_definition", terms_definition_node)
     workflow.add_node("research", research_node)
+    workflow.add_node("sanity_check", sanity_check_node)
     workflow.add_node("analysis", analysis_node)
     workflow.add_node("finalize", finalize_node)
 
@@ -392,7 +484,20 @@ def create_topic_research_graph() -> StateGraph:
 
     # Linear flow for uncached execution
     workflow.add_edge("terms_definition", "research")
-    workflow.add_edge("research", "analysis")
+
+    # Research goes to sanity check (not directly to analysis)
+    workflow.add_edge("research", "sanity_check")
+
+    # Sanity check routes to either analysis (approve) or back to research (reject)
+    workflow.add_conditional_edges(
+        "sanity_check",
+        route_after_sanity_check,
+        {
+            "approve": "analysis",
+            "reject": "research",  # Retry research
+        },
+    )
+
     workflow.add_edge("analysis", "finalize")
     workflow.add_edge("finalize", END)
 
@@ -407,7 +512,6 @@ def create_topic_research_graph() -> StateGraph:
 def create_initial_state(
     topic: str,
     side: Literal["正方", "反方"],
-    filesystem: Optional[Filesystem] = None,
     use_cache: bool = True,
 ) -> TopicResearchState:
     """Create initial state for topic research graph.
@@ -415,16 +519,19 @@ def create_initial_state(
     Args:
         topic: Debate topic
         side: Our side (正方 or 反方)
-        filesystem: Optional filesystem for storing results
         use_cache: Whether to check for cached results
 
     Returns:
         Initial state dictionary
+
+    Note:
+        Pass filesystem via config["configurable"]["filesystem"] when invoking the graph:
+        >>> config = {"configurable": {"filesystem": filesystem}}
+        >>> result = await app.ainvoke(state, config)
     """
     return {
         "topic": topic,
         "side": side,
-        "filesystem": filesystem,
         "use_cache": use_cache,
         # Research outputs (will be populated)
         "key_terms": None,
@@ -432,4 +539,6 @@ def create_initial_state(
         "opponent_research": None,
         "analysis": None,
         "research_result": None,
+        # Quality control
+        "research_retries": 0,
     }

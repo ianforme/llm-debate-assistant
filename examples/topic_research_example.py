@@ -31,7 +31,6 @@ from llm_debate_assistant.agents.deep_preparation.segments.topic_research.storag
 )
 from llm_debate_assistant.agents.deep_preparation.storage import (
     create_filesystem,
-    save_session_metadata,
 )
 
 # Setup logging with Rich
@@ -71,8 +70,6 @@ async def run_topic_research(topic: str, our_side: str):
         console.print("[green]✓ Found existing session for this topic+side[/green]")
     else:
         console.print("[blue]⚡ Creating new session[/blue]")
-        # Save metadata for future cache lookup
-        save_session_metadata(filesystem, topic, our_side, "topic_research")
 
     if session_path:
         console.print(f"[dim]Session path: {session_path}[/dim]")
@@ -129,11 +126,10 @@ async def run_topic_research(topic: str, our_side: str):
         start_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(start_time))
         console.print(f"[dim]Start time: {start_time_str}[/dim]")
 
-        # Create initial state and run workflow
+        # Create initial state (filesystem moved to config for serialization)
         initial_state = create_initial_state(
             topic=topic,
             side=our_side,
-            filesystem=filesystem,
             use_cache=True,  # Enable cache/resume
         )
 
@@ -142,8 +138,12 @@ async def run_topic_research(topic: str, our_side: str):
         console.print("  1️⃣  Check Cache")
         console.print("  2️⃣  Define Key Terms")
         console.print("  3️⃣  Research Both Sides")
-        console.print("  4️⃣  Comparative Analysis")
-        console.print("  5️⃣  Finalize Results\n")
+        console.print("  4️⃣  Quality Check (Sanity Check with Retries)")
+        console.print("  5️⃣  Comparative Analysis")
+        console.print("  6️⃣  Finalize Results\n")
+
+        # Pass filesystem via config for proper serialization
+        config = {"configurable": {"filesystem": filesystem}}
 
         with Progress(
             SpinnerColumn(),
@@ -151,7 +151,7 @@ async def run_topic_research(topic: str, our_side: str):
             console=console,
         ) as progress:
             task = progress.add_task("[cyan]Executing workflow...", total=None)
-            final_state = await app.ainvoke(initial_state, {"configurable": {}})
+            final_state = await app.ainvoke(initial_state, config)
             progress.update(task, description="[green]✓ Workflow complete")
 
         result = final_state["research_result"]
@@ -168,7 +168,14 @@ async def run_topic_research(topic: str, our_side: str):
         )
         logger.info(f"Topic research completed in {elapsed_time:.2f} seconds")
 
-        # Show incremental saves status
+        # Show incremental saves and quality control status
+        retry_count = final_state.get("research_retries", 0)
+        retry_status = (
+            f"[yellow]Research retried {retry_count} time(s)[/yellow]"
+            if retry_count > 0
+            else "[green]Passed quality check on first try[/green]"
+        )
+
         console.print(
             Panel(
                 "[bold]Incremental Saves During Execution:[/bold]\n\n"
@@ -176,13 +183,14 @@ async def run_topic_research(topic: str, our_side: str):
                 "Checkpoint saved to [dim]_progress.json[/dim]\n"
                 "✓ [green]Both Sides Researched[/green] → "
                 "Checkpoint saved to [dim]_progress.json[/dim]\n"
+                f"✓ [green]Quality Check[/green] → {retry_status}\n"
                 "✓ [green]Analysis Completed[/green] → "
                 "Checkpoint saved to [dim]_progress.json[/dim]\n"
                 "✓ [green]Final Results[/green] → "
                 "Saved to [dim]research.json[/dim] + markdown files\n\n"
                 "[dim]These checkpoints enable resuming from any stage "
-                "if interrupted.[/dim]",
-                title="🔄 Resumability",
+                "if interrupted. Quality checks ensure 3+ arguments with evidence.[/dim]",
+                title="🔄 Resumability & Quality Control",
                 border_style="cyan",
             )
         )
@@ -191,10 +199,14 @@ async def run_topic_research(topic: str, our_side: str):
         console.print("[bold cyan]📚 Key Terms (Strategic Definitions)[/bold cyan]\n")
         for term in result.key_terms:
             console.print(f"[bold]{term.term}[/bold]")
-            console.print(f"  [dim]中立定义:[/dim] {term.neutral_definition}")
-            console.print(f"  [green]我方定义:[/green] {term.our_side_definition}")
-            console.print(f"  [yellow]对方定义:[/yellow] {term.opponent_definition}")
-            console.print(f"  [blue]战略建议:[/blue] {term.strategic_note}")
+            console.print(f"  [dim]标准定义:[/dim] {term.standard_definition}")
+            console.print(f"  [green]战略定义:[/green] {term.strategic_definition.definition}")
+            console.print(f"  [blue]权威依据:[/blue] {term.strategic_definition.authority_anchor}")
+            console.print(
+                f"  [yellow]包含/排除:[/yellow] {term.strategic_definition.inclusion_exclusion}"
+            )
+            console.print(f"  [red]对手陷阱:[/red] {term.opponents_trap}")
+            console.print(f"  [cyan]举证责任:[/cyan] {term.burden_shift}")
             console.print()
 
         # Display Our Research
@@ -212,16 +224,14 @@ async def run_topic_research(topic: str, our_side: str):
 
         console.print("[bold]Arguments:[/bold]")
         for i, arg in enumerate(result.our_research.arguments, 1):
-            console.print(f"\n  [bold cyan]Argument {i}: {arg.claim}[/bold cyan]")
-            # Calculate strength indicator
-            strength_dots = 3 if arg.strength == "strong" else 2 if arg.strength == "medium" else 1
-            console.print(f"  Strength: [{arg.strength}] {'●' * strength_dots}")
-            console.print(f"  Reasoning: {arg.reasoning[:200]}...")
-            console.print(f"  Logical Chain: {arg.logical_chain[:150]}...")
-            console.print(f"  Evidence: {len(arg.evidence)} pieces")
+            console.print(f"\n  [bold cyan]Argument {i} ({arg.type}):[/bold cyan]")
+            console.print(f"  [bold]Claim:[/bold] {arg.claim}")
+            console.print(f"  [green]Warrant:[/green] {arg.warrant[:300]}...")
+            console.print(f"  [yellow]Impact:[/yellow] {arg.impact[:200]}...")
+            console.print(f"  [blue]Evidence:[/blue] {len(arg.evidence)} sanity checks")
             if arg.evidence:
                 for ev in arg.evidence[:2]:  # Show first 2
-                    console.print(f"    - {ev[:100]}...")
+                    console.print(f"    - {ev[:150]}...")
         console.print()
 
         # Display Opponent Research
@@ -234,7 +244,7 @@ async def run_topic_research(topic: str, our_side: str):
 
         console.print("[bold]Arguments:[/bold]")
         for i, arg in enumerate(result.opponent_research.arguments, 1):
-            console.print(f"  {i}. {arg.claim} (Strength: {arg.strength})")
+            console.print(f"  {i}. [{arg.type}] {arg.claim}")
         console.print()
 
         # Display Comparative Analysis
@@ -242,25 +252,29 @@ async def run_topic_research(topic: str, our_side: str):
 
         console.print("[bold]Key Clashes:[/bold]")
         for i, clash in enumerate(result.analysis.key_clashes, 1):
-            console.print(f"\n  [bold yellow]Clash {i}: {clash.issue}[/bold yellow]")
+            console.print(
+                f"\n  [bold yellow]Clash {i} ({clash.clash_type}): {clash.issue}[/bold yellow]"
+            )
             console.print(f"  Our Position: {clash.our_position}")
             console.print(f"  Opponent Position: {clash.opponent_position}")
-            console.print(f"  Analysis: {clash.analysis[:150]}...")
+            console.print(f"  Resolution Strategy: {clash.resolution_strategy[:150]}...")
         console.print()
 
         console.print("[bold green]Our Advantages:[/bold green]")
         for i, adv in enumerate(result.analysis.our_advantages, 1):
-            console.print(f"  {i}. {adv}")
+            console.print(f"  {i}. [bold]{adv.point}[/bold]")
+            console.print(f"      {adv.explanation[:150]}...")
         console.print()
 
         console.print("[bold yellow]Opponent Vulnerabilities:[/bold yellow]")
         for i, vuln in enumerate(result.analysis.opponent_vulnerabilities, 1):
-            console.print(f"  {i}. {vuln}")
+            console.print(f"  {i}. [bold]{vuln.point}[/bold]")
+            console.print(f"      {vuln.explanation[:150]}...")
         console.print()
 
         console.print("[bold blue]Strategic Recommendations:[/bold blue]")
         for i, rec in enumerate(result.analysis.strategic_recommendations, 1):
-            console.print(f"  {i}. {rec}")
+            console.print(f"  {i}. [{rec.category}] {rec.instruction[:200]}...")
         console.print()
 
         # Summary Table

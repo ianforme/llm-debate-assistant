@@ -14,6 +14,7 @@ from llm_debate_assistant.agents.deep_preparation.segments.topic_research.schema
     TopicResearchResult,
 )
 from llm_debate_assistant.agents.deep_preparation.schema import Filesystem
+from llm_debate_assistant.agents.deep_preparation.storage import save_session_metadata
 
 
 def save_research_to_filesystem(research: TopicResearchResult, filesystem: Filesystem) -> None:
@@ -34,6 +35,14 @@ def save_research_to_filesystem(research: TopicResearchResult, filesystem: Files
             opponent_arguments.md  # Opponent's arguments
             analysis.md           # Comparative analysis
     """
+    # Save session metadata for cache lookup
+    save_session_metadata(
+        filesystem=filesystem,
+        topic=research.topic,
+        side=research.our_side,
+        segment="topic_research",
+    )
+
     # Save full structured JSON for programmatic access
     filesystem.write(
         "/research/research.json",
@@ -61,10 +70,12 @@ def save_research_to_filesystem(research: TopicResearchResult, filesystem: Files
     terms_parts = ["# Key Terms (Strategic Definitions)\n"]
     for term in research.key_terms:
         terms_parts.append(f"## {term.term}\n")
-        terms_parts.append(f"**中立定义**: {term.neutral_definition}\n")
-        terms_parts.append(f"**我方有利定义**: {term.our_side_definition}\n")
-        terms_parts.append(f"**对方可能定义**: {term.opponent_definition}\n")
-        terms_parts.append(f"**战略建议**: {term.strategic_note}\n")
+        terms_parts.append(f"**基准定义**: {term.standard_definition}\n")
+        terms_parts.append(f"**我方战略定义**: {term.strategic_definition.definition}\n")
+        terms_parts.append(f"**权威锚点**: {term.strategic_definition.authority_anchor}\n")
+        terms_parts.append(f"**收纳与切割**: {term.strategic_definition.inclusion_exclusion}\n")
+        terms_parts.append(f"**对方定义的陷阱**: {term.opponents_trap}\n")
+        terms_parts.append(f"**举证责任转移**: {term.burden_shift}\n")
 
     filesystem.write("/research/key_terms.md", "\n".join(terms_parts))
 
@@ -80,13 +91,9 @@ def save_research_to_filesystem(research: TopicResearchResult, filesystem: Files
     our_parts.append("## Arguments\n")
     for i, arg in enumerate(research.our_research.arguments, 1):
         our_parts.append(f"### Argument {i}: {arg.claim}\n")
-        our_parts.append(f"**Strength**: {arg.strength}\n")
-        our_parts.append(f"**Reasoning**: {arg.reasoning}\n")
-        our_parts.append(f"**Logical Chain**: {arg.logical_chain}\n")
-        if arg.evidence:
-            our_parts.append("**Evidence**:")
-            for ev in arg.evidence:
-                our_parts.append(f"- {ev}")
+        our_parts.append(f"**Type**: {arg.type} (价值论证 or 实利论证)\n")
+        our_parts.append(f"**Warrant/Mechanism**: {arg.warrant}\n")
+        our_parts.append(f"**Impact**: {arg.impact}\n")
         our_parts.append("")
 
     filesystem.write("/research/our_arguments.md", "\n".join(our_parts))
@@ -104,13 +111,9 @@ def save_research_to_filesystem(research: TopicResearchResult, filesystem: Files
     opp_parts.append("## Arguments\n")
     for i, arg in enumerate(research.opponent_research.arguments, 1):
         opp_parts.append(f"### Argument {i}: {arg.claim}\n")
-        opp_parts.append(f"**Strength**: {arg.strength}\n")
-        opp_parts.append(f"**Reasoning**: {arg.reasoning}\n")
-        opp_parts.append(f"**Logical Chain**: {arg.logical_chain}\n")
-        if arg.evidence:
-            opp_parts.append("**Evidence**:")
-            for ev in arg.evidence:
-                opp_parts.append(f"- {ev}")
+        opp_parts.append(f"**Type**: {arg.type} (价值论证 or 实利论证)\n")
+        opp_parts.append(f"**Warrant/Mechanism**: {arg.warrant}\n")
+        opp_parts.append(f"**Impact**: {arg.impact}\n")
         opp_parts.append("")
 
     filesystem.write("/research/opponent_arguments.md", "\n".join(opp_parts))
@@ -120,22 +123,24 @@ def save_research_to_filesystem(research: TopicResearchResult, filesystem: Files
 
     analysis_parts.append("## Key Clashes\n")
     for i, clash in enumerate(research.analysis.key_clashes, 1):
-        analysis_parts.append(f"### Clash {i}: {clash.issue}\n")
+        analysis_parts.append(f"### Clash {i} ({clash.clash_type}): {clash.issue}\n")
         analysis_parts.append(f"**Our Position**: {clash.our_position}\n")
         analysis_parts.append(f"**Opponent Position**: {clash.opponent_position}\n")
-        analysis_parts.append(f"**Analysis**: {clash.analysis}\n")
+        analysis_parts.append(f"**Resolution Strategy**: {clash.resolution_strategy}\n\n")
 
     analysis_parts.append("## Our Advantages\n")
     for i, adv in enumerate(research.analysis.our_advantages, 1):
-        analysis_parts.append(f"{i}. {adv}")
+        analysis_parts.append(f"{i}. **{adv.point}**\n")
+        analysis_parts.append(f"   {adv.explanation}\n\n")
 
     analysis_parts.append("\n## Opponent Vulnerabilities\n")
     for i, vuln in enumerate(research.analysis.opponent_vulnerabilities, 1):
-        analysis_parts.append(f"{i}. {vuln}")
+        analysis_parts.append(f"{i}. **{vuln.point}**\n")
+        analysis_parts.append(f"   {vuln.explanation}\n\n")
 
     analysis_parts.append("\n## Strategic Recommendations\n")
     for i, rec in enumerate(research.analysis.strategic_recommendations, 1):
-        analysis_parts.append(f"{i}. {rec}")
+        analysis_parts.append(f"{i}. [{rec.category}] {rec.instruction}\n\n")
 
     filesystem.write("/research/analysis.md", "\n".join(analysis_parts))
 

@@ -36,9 +36,8 @@ def format_arguments_truncated(arguments: List[Argument]) -> str:
     """
     formatted = []
     for i, arg in enumerate(arguments, 1):
-        text = f"{i}. {arg.claim}\n   推理：{arg.reasoning[:100]}..."
-        if arg.evidence:
-            text += f"\n   证据：{len(arg.evidence)}条"
+        text = f"{i}. {arg.claim}\n   类型：{arg.type}\n   推导：{arg.warrant[:100]}..."
+        text += f"\n   影响：{arg.impact[:80]}..."
         formatted.append(text)
     return "\n\n".join(formatted)
 
