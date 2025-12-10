@@ -25,10 +25,11 @@ class SelectedArgument(BaseModel):
     """An argument selected from research for opening statement."""
 
     claim: str = Field(description="The argument claim")
-    reasoning: str = Field(description="Logical reasoning supporting the claim")
-    logical_chain: str = Field(description="Step-by-step logic chain")
+    type: str = Field(description="Value or Practical")
+    warrant: str = Field(description="Logical reasoning/mechanism supporting the claim")
+    impact: str = Field(description="Ultimate benefit or problem solved")
     selection_rationale: str = Field(
-        description="Why this argument was selected (strength, strategic fit, etc.)"
+        description="Why this argument was selected (strategic fit, rhetorical strength, etc.)"
     )
     order: int = Field(description="Order to present (1, 2, or 3)")
 
@@ -70,9 +71,8 @@ class ArgumentEvidence(BaseModel):
 
     argument_claim: str = Field(description="The argument this evidence supports")
     sources: list[EvidenceSource] = Field(
-        description="8-12 high-quality sources",
-        min_length=8,
-        max_length=12,
+        description="8-12 high-quality sources (ideally, but accepts whatever is available)",
+        max_length=15,  # Allow a bit more flexibility
     )
     best_quotes: list[str] = Field(
         description="3-5 most impactful quotes to use",

@@ -8,12 +8,23 @@ Evaluates opening statement quality and provides improvement guidance.
 import logging
 from typing import Any
 
+
+def count_visible_chars(text: str) -> int:
+    """Count visible characters (excluding spaces, newlines, tabs).
+
+    This is the standard for debate character limits - only counts
+    Chinese characters, punctuation, English letters, and numbers.
+    """
+    return len("".join(c for c in text if not c.isspace()))
+
+
 from llm_debate_assistant.services.llm import get_llm
 from llm_debate_assistant.services.prompt_manager import get_prompt_manager
-from llm_debate_assistant.agents.deep_preparation.segments.opening.schema import (
+from llm_debate_assistant.agents.deep_preparation.segments.constructive_speech.schema import (
     OpeningState,
     EvaluationResult,
 )
+from llm_debate_assistant.agents.deep_preparation.storage import save_session_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +41,19 @@ async def evaluate_statement_node(state: OpeningState) -> dict[str, Any]:
     """
     draft = state["draft"]
     strategy = state["opening_strategy"]
+    deep_evidence = state["deep_evidence"]
     topic = state["topic"]
     side = state["side"]
 
     # Type narrowing assertions
     assert draft is not None
     assert strategy is not None
+    assert deep_evidence is not None
 
-    logger.info(f"Evaluating opening statement ({len(draft)} characters)")
+    char_count = count_visible_chars(draft)
+    logger.info(
+        f"Evaluating opening statement ({char_count} visible characters, {len(draft)} total)"
+    )
 
     # Build formatted sections for the prompt
     # Key terms list
@@ -46,7 +62,16 @@ async def evaluate_statement_node(state: OpeningState) -> dict[str, Any]:
     # Arguments list
     arguments_list = chr(10).join(
         f"{i+1}. {arg.claim}"
-        for i, arg in enumerate(sorted(strategy.selected_arguments, key=lambda x: x.order))
+        for i, arg in enumerate(
+            sorted(strategy.selected_arguments, key=lambda x: x.order)
+        )
+    )
+
+    # Evidence preview - compact summary for context
+    evidence_preview = chr(10).join(
+        f"论点{i+1}: {len(ev.sources)}个搜索来源, "
+        f"{'有' if ev.best_quotes else '无'}搜索结果文本"
+        for i, ev in enumerate(deep_evidence)
     )
 
     # Get prompt template from prompt manager
@@ -59,30 +84,56 @@ async def evaluate_statement_node(state: OpeningState) -> dict[str, Any]:
         side=side,
         key_terms_list=key_terms_list,
         arguments_list=arguments_list,
+        evidence_preview=evidence_preview,
         value_framework=strategy.value_framework,
         comparison_standard=strategy.comparison_standard,
         rhetorical_approach=strategy.rhetorical_approach,
-        draft_length=len(draft),
+        draft_length=count_visible_chars(draft),
         draft=draft,
     )
 
+    # Use OpenAI for structured output (Gemini thinking mode conflicts with structured output)
     llm = get_llm(provider="openai", temperature=0.3)  # Low temperature for consistency
     structured_llm = llm.with_structured_output(EvaluationResult)
 
-    logger.info("Calling LLM for evaluation...")
+    logger.info("Calling OpenAI LLM for evaluation...")
     evaluation = await structured_llm.ainvoke(prompt)
+
+    # Debug logging
+    logger.info(f"Structured output type: {type(evaluation)}")
 
     # Handle union type
     if isinstance(evaluation, dict):
+        logger.info("Converting dict to EvaluationResult")
         evaluation = EvaluationResult(**evaluation)
+    elif not isinstance(evaluation, EvaluationResult):
+        logger.error(f"Unexpected type from Gemini: {type(evaluation)}")
+        raise TypeError(
+            f"Expected EvaluationResult or dict, got {type(evaluation)}. "
+            f"This might be a Gemini structured output issue."
+        )
 
-    # Type narrowing - ensure we have EvaluationResult
-    assert isinstance(evaluation, EvaluationResult)
-
-    logger.info(f"Evaluation complete: {evaluation.result} (score: {evaluation.score}/10)")
+    logger.info(
+        f"Evaluation complete: {evaluation.result} (score: {evaluation.score}/10)"
+    )
 
     # Increment iteration count
     new_iteration_count = state.get("iteration_count", 0) + 1
+
+    # Save session metadata when evaluation is complete (pass or max iterations reached)
+    max_iterations = state.get("max_iterations", 3)
+    filesystem = state.get("filesystem")
+
+    if filesystem and (
+        evaluation.result == "pass" or new_iteration_count >= max_iterations
+    ):
+        logger.info("Saving opening session metadata for cache lookup")
+        save_session_metadata(
+            filesystem=filesystem,
+            topic=state["topic"],
+            side=state["side"],
+            segment="opening",
+        )
 
     return {
         "evaluation": evaluation.model_dump(),
@@ -103,8 +154,6 @@ async def improve_statement_node(state: OpeningState) -> dict[str, Any]:
     """
     draft = state["draft"]
     evaluation = state["evaluation"]
-    strategy = state["opening_strategy"]
-    deep_evidence = state["deep_evidence"]
     topic = state["topic"]
     side = state["side"]
     filesystem = state["filesystem"]
@@ -112,58 +161,34 @@ async def improve_statement_node(state: OpeningState) -> dict[str, Any]:
     # Type narrowing assertions, mypy cannot infer from dict access
     assert draft is not None
     assert evaluation is not None
-    assert strategy is not None
-    assert deep_evidence is not None
     assert filesystem is not None
 
     logger.info(f"Improving opening statement (iteration {state['iteration_count']})")
 
-    # Build formatted sections for the prompt
-    # Strengths list
+    # Build compact context for improvement
+    # Keep strengths and weaknesses for context
     strengths_list = chr(10).join(f"✓ {s}" for s in evaluation.get("strengths", []))
-
-    # Weaknesses list
     weaknesses_list = chr(10).join(f"✗ {w}" for w in evaluation.get("weaknesses", []))
-
-    # Arguments list
-    arguments_list = chr(10).join(
-        f"{i+1}. {arg.claim}"
-        for i, arg in enumerate(sorted(strategy.selected_arguments, key=lambda x: x.order))
-    )
-
-    # Deep evidence section
-    deep_evidence_section = chr(10).join(
-        f"""
-        论点{i+1}证据：
-        - 最佳引用：{'; '.join(ev.best_quotes[:3])}
-        - 统计数据：{'; '.join(ev.statistics[:3]) if ev.statistics else '无'}
-        - 案例：{'; '.join(ev.case_studies[:2]) if ev.case_studies else '无'}
-        """
-        for i, ev in enumerate(deep_evidence)
-    )
 
     # Get prompt template from prompt manager
     pm = get_prompt_manager()
     prompt_template = pm.get("OPENING_IMPROVEMENT_PROMPT")
 
-    # Format the prompt with all variables
+    # Simplified prompt - removed redundant context (evidence, arguments already in draft)
     prompt = prompt_template.format(
         topic=topic,
         side=side,
         draft=draft,
-        score=evaluation["score"],
-        result=evaluation.get("result", "fail").upper(),
+        evaluation_score=evaluation["score"],
         strengths_list=strengths_list,
         weaknesses_list=weaknesses_list,
-        feedback=evaluation.get("feedback", ""),
-        strategy_alignment="是" if evaluation.get("strategy_alignment") else "否",
-        arguments_list=arguments_list,
-        deep_evidence_section=deep_evidence_section,
+        evaluation_feedback=evaluation.get("feedback", ""),
     )
 
-    llm = get_llm(provider="openai", temperature=0.8)
+    # Use Gemini for better Chinese character counting and constraint adherence
+    llm = get_llm(provider="gemini", temperature=0.8)
 
-    logger.info("Calling LLM for improvement...")
+    logger.info("Calling Gemini LLM for improvement...")
     response = await llm.ainvoke(prompt)
 
     # Extract improved draft
@@ -179,12 +204,15 @@ async def improve_statement_node(state: OpeningState) -> dict[str, Any]:
 
     improved_draft = improved_draft.strip()
 
-    logger.info(f"Improvement complete: {len(improved_draft)} characters")
+    char_count = count_visible_chars(improved_draft)
+    logger.info(
+        f"Improvement complete: {char_count} visible characters, {len(improved_draft)} total"
+    )
 
-    # Save improved version
-    filesystem.write("/draft.txt", improved_draft)  # type: ignore[attr-defined]
+    # Save improved version (in /opening/ subfolder for organization)
+    filesystem.write("/constructive_speech/draft.txt", improved_draft)  # type: ignore[attr-defined]
     filesystem.write(  # type: ignore[attr-defined]
-        f"/draft_v{state['iteration_count']}.txt",
+        f"/constructive_speech/draft_v{state['iteration_count']}.txt",
         improved_draft,
     )  # Keep version history
 

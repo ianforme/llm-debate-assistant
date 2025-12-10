@@ -10,7 +10,7 @@ from typing import Any
 
 from llm_debate_assistant.services.llm import get_llm
 from llm_debate_assistant.services.prompt_manager import get_prompt_manager
-from llm_debate_assistant.agents.deep_preparation.segments.opening.schema import (
+from llm_debate_assistant.agents.deep_preparation.segments.constructive_speech.schema import (
     OpeningState,
     OpeningStrategy,
 )
@@ -49,10 +49,12 @@ async def select_strategy_node(state: OpeningState) -> dict[str, Any]:
     key_terms_section = chr(10).join(
         f"""
       **{i+1}. {term.term}**
-      - 中立定义：{term.neutral_definition}
-      - 我方定义：{term.our_side_definition}
-      - 对方可能定义：{term.opponent_definition}
-      - 战略笔记：{term.strategic_note}
+      - 基准定义：{term.standard_definition}
+      - 我方战略定义：{term.strategic_definition.definition}
+      - 权威锚点：{term.strategic_definition.authority_anchor}
+      - 收纳与切割：{term.strategic_definition.inclusion_exclusion}
+      - 对方定义的陷阱：{term.opponents_trap}
+      - 举证责任转移：{term.burden_shift}
       """
         for i, term in enumerate(research.key_terms)
     )
@@ -61,10 +63,9 @@ async def select_strategy_node(state: OpeningState) -> dict[str, Any]:
     arguments_section = chr(10).join(
         f"""
       **论点{i+1}：{arg.claim}**
-      - 推论：{arg.reasoning[:200]}...
-      - 逻辑链：{arg.logical_chain}
-      - 强度：{arg.strength}
-      - 现有论据/资料：{len(arg.evidence)}
+      - 类型：{arg.type} ({"价值论证" if arg.type == "Value" else "实利论证"})
+      - 推导逻辑：{arg.warrant[:200]}...
+      - 影响/实利：{arg.impact[:150]}...
       """
         for i, arg in enumerate(research.our_research.arguments)
     )
@@ -101,27 +102,38 @@ async def select_strategy_node(state: OpeningState) -> dict[str, Any]:
         opponent_vulnerabilities=opponent_vulnerabilities,
     )
 
+    # Use OpenAI for structured output (Gemini thinking mode conflicts with structured output)
     llm = get_llm(provider="openai", temperature=0.4)
     structured_llm = llm.with_structured_output(OpeningStrategy)
 
-    logger.info("Calling LLM for strategic selection...")
+    logger.info("Calling OpenAI LLM for strategic selection...")
     strategy = await structured_llm.ainvoke(prompt)
+
+    # Debug logging to see what Gemini returns
+    logger.info(f"Structured output type: {type(strategy)}")
+    logger.debug(f"Structured output content: {strategy}")
 
     # Handle union type (dict or Pydantic model)
     if isinstance(strategy, dict):
+        logger.info("Converting dict to OpeningStrategy")
         strategy = OpeningStrategy(**strategy)
-
-    # Type narrowing - ensure we have OpeningStrategy
-    assert isinstance(strategy, OpeningStrategy)
+    elif not isinstance(strategy, OpeningStrategy):
+        # Gemini might return something unexpected - try to handle it
+        logger.error(f"Unexpected type from Gemini: {type(strategy)}")
+        logger.error(f"Content: {strategy}")
+        raise TypeError(
+            f"Expected OpeningStrategy or dict, got {type(strategy)}. "
+            f"This might be a Gemini structured output issue."
+        )
 
     logger.info(
         f"Selected strategy: {len(strategy.selected_key_terms)} terms, "
         f"3 arguments, {strategy.rhetorical_approach} approach"
     )
 
-    # Save to filesystem
+    # Save to filesystem (in /opening/ subfolder for organization)
     filesystem.write(  # type: ignore[attr-defined]
-        "/opening_strategy.json", strategy.model_dump_json(indent=2, ensure_ascii=False)
+        "/constructive_speech/opening_strategy.json", strategy.model_dump_json(indent=2, ensure_ascii=False)
     )
 
     return {"opening_strategy": strategy}

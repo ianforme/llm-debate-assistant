@@ -15,10 +15,10 @@ from typing import Literal
 
 from langgraph.graph import StateGraph, END
 
-from llm_debate_assistant.agents.deep_preparation.segments.opening.schema import (
+from llm_debate_assistant.agents.deep_preparation.segments.constructive_speech.schema import (
     OpeningState,
 )
-from llm_debate_assistant.agents.deep_preparation.segments.opening.operations import (
+from llm_debate_assistant.agents.deep_preparation.segments.constructive_speech.operations import (
     load_research_node,
     select_strategy_node,
     deep_evidence_node,

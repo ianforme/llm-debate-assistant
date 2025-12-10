@@ -9,7 +9,7 @@ import json
 import logging
 from typing import Any
 
-from llm_debate_assistant.agents.deep_preparation.segments.opening.schema import (
+from llm_debate_assistant.agents.deep_preparation.segments.constructive_speech.schema import (
     OpeningState,
 )
 from llm_debate_assistant.agents.deep_preparation.segments.topic_research.schema import (
