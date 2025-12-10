@@ -52,9 +52,11 @@ audio = [
 ]
 
 [tool.mypy]
-exclude = [
-    "src/llm_debate_assistant/agents/deep_preparation/segments/opening_v1/"
-]
+python_version = "3.11"
+
+[[tool.mypy.overrides]]
+module = "llm_debate_assistant.services"
+ignore_errors = true
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

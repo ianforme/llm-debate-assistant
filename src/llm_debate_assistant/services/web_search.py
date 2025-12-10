@@ -1,54 +1,83 @@
 import asyncio
-from dataclasses import dataclass
-from typing import Any, cast
-
+import logging
 from google.genai import types
+from typing import Any, List, Optional
+from dataclasses import dataclass, field
+from llm_debate_assistant.core.client import get_async_gemini_client
 
-from llm_debate_assistant.core.client import get_async_gemini_client, get_gemini_client
-
-# ==============================================================
-# Constants and Prompts
-# ==============================================================
-
-EVIDENCE_SEARCH_PROMPT_TEMPLATE = """
-你的任务是根据论点、论证和论据，寻找相关的支持性证据。
-
-辩题：{topic}
-立场：{side}
-
-论点：{argument}
-论证：{warrant}
-所需证据类型：
-{evidence_list}
-
-请找到：
-1. 优先使用一手来源：政府、国际组织、同行评审论文、权威数据集、可信媒体等
-2. 优先选择具体证据：真实案例、统计数据、研究报告、法律法规等
-3. 所有证据必须支持论点和论证理由
-
-对于每个找到的证据，请提供：
-- 标题
-- 来源链接
-- 关键要点（支持论点的具体内容）
-- 相关原文摘录
-
-请使用证据的原始语言输出，不要翻译。
-"""
-
+logger = logging.getLogger(__name__)
 
 # ==============================================================
 # Data Models
 # ==============================================================
 
 
-@dataclass(frozen=True)
-class ArgumentEvidence:
-    """Container for argument and its evidence search results."""
+@dataclass
+class SearchSource:
+    """Represents a single source citation from Google Search."""
 
-    argument: str
-    warrant: str
-    results: dict
-    error: str | None = None
+    uri: str
+    title: str
+
+
+@dataclass
+class SearchResult:
+    """Container for the result of a single search query."""
+
+    query: str
+    content: str  # The summarized answer/text from Gemini
+    sources: List[SearchSource] = field(default_factory=list)
+    raw_metadata: Optional[Any] = None
+    error: Optional[str] = None
+
+
+# ==============================================================
+# Helper Functions (Extraction Logic)
+# ==============================================================
+
+
+def _extract_search_data(response: Any, query: str) -> SearchResult:
+    """Parses the raw Gemini response to extract text content and grounding sources.
+
+    Args:
+        response (Any): Raw response from Gemini API
+        query (str): The search query string
+
+    Returns:
+        SearchResult: Parsed search result containing content and sources
+    """
+    result = SearchResult(query=query, content="")
+
+    if not (hasattr(response, "candidates") and response.candidates):
+        return result
+
+    candidate = response.candidates[0]
+
+    # 1. Extract Text Content
+    text_parts = []
+    if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
+        for part in candidate.content.parts:
+            if hasattr(part, "text") and part.text:
+                text_parts.append(part.text)
+    result.content = "".join(text_parts)
+
+    # 2. Extract Grounding Metadata (Sources)
+    if hasattr(candidate, "grounding_metadata"):
+        gm = candidate.grounding_metadata
+        result.raw_metadata = gm
+
+        if hasattr(gm, "grounding_chunks") and gm.grounding_chunks:
+            for chunk in gm.grounding_chunks:
+                # Check for 'web' attribute which contains the source info
+                if hasattr(chunk, "web"):
+                    result.sources.append(
+                        SearchSource(
+                            uri=getattr(chunk.web, "uri", ""),
+                            title=getattr(chunk.web, "title", "Unknown Source"),
+                        )
+                    )
+
+    return result
 
 
 # ==============================================================
@@ -56,402 +85,65 @@ class ArgumentEvidence:
 # ==============================================================
 
 
-def _extract_text_from_response(response: Any) -> str:
-    """Extract text content from response parts, avoiding the non-text parts warning.
+async def search_single_query(
+    query: str,
+    model: str = "gemini-2.5-flash",
+) -> SearchResult:
+    """Executes a single search query using Gemini's Google Search Grounding.
 
     Args:
-        response (Any): The Gemini API response object
+        query (str): The search query string
+        model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-flash".
 
     Returns:
-        str: Concatenated text from all text parts
+        SearchResult: The parsed search result containing content and sources
     """
-    if not (hasattr(response, "candidates") and response.candidates):
-        return ""
+    client = get_async_gemini_client()
 
-    candidate = response.candidates[0]
-    if not hasattr(candidate, "content") or not candidate.content:
-        return ""
-
-    if not hasattr(candidate.content, "parts") or not candidate.content.parts:
-        return ""
-
-    text_parts = []
-    for part in candidate.content.parts:
-        if hasattr(part, "text") and part.text:
-            text_parts.append(part.text)
-
-    return "".join(text_parts)
-
-
-def _extract_search_metadata(response: Any) -> dict[str, Any]:
-    """private method to extract search metadata from Gemini response.
-
-    Args:
-        response (Any): The Gemini API response object
-
-    Returns:
-        dict[str, Any]: A dictionary containing extracted metadata and search results
-    """
-    result: dict[str, Any] = {
-        "text": _extract_text_from_response(response),
-        "grounding_metadata": None,
-        "search_results": [],
-    }
-
-    if not (hasattr(response, "candidates") and response.candidates):
-        return result
-
-    candidate = response.candidates[0]
-    if not hasattr(candidate, "grounding_metadata"):
-        return result
-
-    grounding_metadata = candidate.grounding_metadata
-    result["grounding_metadata"] = grounding_metadata
-
-    # Extract search entry point
-    if (
-        hasattr(grounding_metadata, "search_entry_point")
-        and grounding_metadata.search_entry_point is not None
-    ):
-        result["search_entry_point"] = (
-            grounding_metadata.search_entry_point.rendered_content
-        )
-
-    # Extract grounding chunks (search results)
-    if hasattr(grounding_metadata, "grounding_chunks"):
-        for chunk in grounding_metadata.grounding_chunks:
-            if hasattr(chunk, "web"):
-                result["search_results"].append(
-                    {"uri": chunk.web.uri, "title": chunk.web.title or ""}
-                )
-
-    return result
-
-
-def search_web(query: str, model: str = "gemini-3-pro-preview") -> dict[str, Any]:
-    """Search the web using Gemini with Google Search grounding.
-
-    Args:
-        query (str): The search query
-        model (str, optional): The Gemini model to use.
-            Defaults to "gemini-3-pro-preview".
-
-    Returns:
-        dict[str, Any]: A dictionary containing search results and metadata
-    """
-    # lazy load client
-    # Use shared client from centralized client module
-    # otherwise, it might create multiple instances that
-    # could lead to rate limiting issues or connecting limit issues
-    client = get_gemini_client()
-
-    # check out https://googleapis.github.io/python-genai/genai.html#genai.types.Tool
-    google_search_tool = types.Tool(google_search=types.GoogleSearch())
-
-    response = client.models.generate_content(
-        model=model,
-        contents=query,
-        config=types.GenerateContentConfig(
-            tools=[google_search_tool],
-            response_modalities=["TEXT"],
-            temperature=0.0,
-            thinking_config=types.ThinkingConfig(
-                include_thoughts=False,
-                thinking_budget=-1,
-            ),
-        ),
+    prompt_content = (
+        f"Please search Google for the following query: '{query}'. "
+        f"Summarize the key facts found. If specific data or cases are found, cite them."
     )
-
-    return _extract_search_metadata(response)
-
-
-async def async_search_web(
-    query: str, model: str = "gemini-3-pro-preview"
-) -> dict[str, Any]:
-    """Search the web using Gemini with Google Search grounding.
-
-    Args:
-        query (str): The search query
-        model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-pro".
-
-    Returns:
-        dict[str, Any]: A dictionary containing search results and metadata
-    """
-    # Use shared async client from centralized client module
-    async_client = get_async_gemini_client()
 
     google_search_tool = types.Tool(google_search=types.GoogleSearch())
 
-    response = await async_client.aio.models.generate_content(
-        model=model,
-        contents=query,
-        config=types.GenerateContentConfig(
-            tools=[google_search_tool],
-            response_modalities=["TEXT"],
-            temperature=0.0,
-            thinking_config=types.ThinkingConfig(
-                include_thoughts=False,
-                thinking_budget=-1,
-            ),
-        ),
-    )
-
-    return _extract_search_metadata(response)
-
-
-# ==============================================================
-# Evidence Search Functions
-# ==============================================================
-
-
-def _build_evidence_query(
-    argument: str,
-    warrant: str,
-    evidence_needed: list[str],
-    topic: str,
-    side: str,
-    feedback: str | None = None,
-) -> str:
-    """private method for building evidence search queries.
-
-    Args:
-        argument (str): The main argument/claim
-        warrant (str): The reasoning supporting the argument
-        evidence_needed (list[str]): List of specific evidence types needed
-        topic (str): The debate topic
-        side (str): Which side of the debate
-        feedback (str | None): Optional evaluator feedback for refining search
-
-    Returns:
-        str: The formatted search query string
-    """
-    evidence_list = "\n".join(f"- {e}" for e in evidence_needed)
-    query = EVIDENCE_SEARCH_PROMPT_TEMPLATE.format(
-        topic=topic,
-        side=side,
-        argument=argument,
-        warrant=warrant,
-        evidence_list=evidence_list,
-    )
-
-    # Add feedback context if provided
-    if feedback:
-        query += f"\n\n【评审反馈】\n{feedback}\n\n请根据以上反馈，寻找更合适的证据。"
-
-    return query
-
-
-# ==============================================================
-# Function tool for evidence search in debates
-# ==============================================================
-
-
-# Synchronous version
-def search_for_evidence(
-    argument: str,
-    warrant: str,
-    evidence_needed: list[str],
-    topic: str,
-    side: str,
-    model: str = "gemini-3-pro-preview",
-    feedback: str | None = None,
-) -> dict:
-    """Search for evidence to support a debate argument.
-
-    Args:
-        argument (str): The main argument/claim
-        warrant (str): The reasoning supporting the argument
-        evidence_needed (list[str]): List of specific evidence types needed
-        topic (str): The debate topic
-        side (str): Which side of the debate
-        model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-pro".
-        feedback (str | None): Optional evaluator feedback for refining search
-
-    Returns:
-        dict: A dictionary containing search results and generated evidence analysis
-    """
-    query = _build_evidence_query(
-        argument, warrant, evidence_needed, topic, side, feedback
-    )
-    return search_web(query, model=model)
-
-
-# Asynchronous version
-async def async_search_for_evidence(
-    argument: str,
-    warrant: str,
-    evidence_needed: list[str],
-    topic: str,
-    side: str,
-    model: str = "gemini-3-pro-preview",
-    feedback: str | None = None,
-) -> dict:
-    """Search for evidence to support a debate argument asynchronously.
-
-    Args:
-        argument (str): The main argument/claim
-        warrant (str): The reasoning supporting the argument
-        evidence_needed (list[str]): List of specific evidence types needed
-        topic (str): The debate topic
-        side (str): Which side of the debate
-        model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-pro".
-        feedback (str | None): Optional evaluator feedback for refining search
-
-    Returns:
-        dict: A dictionary containing search results and generated evidence analysis
-    """
-    query = _build_evidence_query(
-        argument, warrant, evidence_needed, topic, side, feedback
-    )
-    return await async_search_web(query, model=model)
-
-
-# Thread-based async version (more reliable for concurrent requests)
-async def async_search_for_evidence_threaded(
-    argument: str,
-    warrant: str,
-    evidence_needed: list[str],
-    topic: str,
-    side: str,
-    model: str = "gemini-3-pro-preview",
-    feedback: str | None = None,
-) -> dict:
-    """Search for evidence using thread-based async.
-
-    More reliable for concurrent requests than native async.
-    This version runs the synchronous search in a thread pool to avoid
-    blocking.
-    Use this if async_search_for_evidence has issues with concurrent requests.
-
-    Args:
-        argument (str): The main argument/claim
-        warrant (str): The reasoning supporting the argument
-        evidence_needed (list[str]): List of specific evidence types needed
-        topic (str): The debate topic
-        side (str): Which side of the debate
-        model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-pro".
-        feedback (str | None): Optional evaluator feedback for refining search
-
-    Returns:
-        dict: A dictionary containing search results and generated evidence analysis
-    """
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None,
-        search_for_evidence,
-        argument,
-        warrant,
-        evidence_needed,
-        topic,
-        side,
-        model,
-        feedback,
-    )
-
-
-# ==============================================================
-# Multiple Argument Search Functions
-# ==============================================================
-
-
-async def search_multiple_arguments(
-    arguments: list[tuple[str, str, list[str]]],
-    topic: str,
-    side: str,
-    model: str = "gemini-3-pro-preview",
-    use_threaded: bool = False,
-    feedback: str | None = None,
-) -> list[ArgumentEvidence]:
-    """Search for evidence for multiple arguments concurrently.
-
-    Args:
-        arguments (list[tuple[str, str, list[str]]]): A list of tuples
-            containing the argument, warrant, and evidence needed.
-        topic (str): The debate topic.
-        side (str): Which side of the debate.
-        model (str, optional): The Gemini model to use.
-            Defaults to "gemini-2.5-pro".
-        use_threaded (bool, optional): If True, uses thread-based async.
-            Defaults to False.
-        feedback (str | None): Optional evaluator feedback for refining search
-
-    Returns:
-        list[ArgumentEvidence]: A list of ArgumentEvidence objects containing
-            results for each argument.
-    """
-    # Choose async implementation based on use_threaded flag
-    search_func = (
-        async_search_for_evidence_threaded
-        if use_threaded
-        else async_search_for_evidence
-    )
-
-    # Create all search tasks
-    tasks = [
-        search_func(
-            argument=argument,
-            warrant=warrant,
-            evidence_needed=evidence_needed,
-            topic=topic,
-            side=side,
+    try:
+        response = await client.aio.models.generate_content(
             model=model,
-            feedback=feedback,
+            contents=prompt_content,
+            config=types.GenerateContentConfig(
+                tools=[google_search_tool],
+                response_modalities=["TEXT"],
+                temperature=0.0,  # Fact-based, keep it strict
+            ),
         )
-        for argument, warrant, evidence_needed in arguments
-    ]
+        return _extract_search_data(response, query)
 
-    # Execute all searches concurrently
-    gathered = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Package results
-    results = []
-    for (argument, warrant, _), result in zip(arguments, gathered):
-        if isinstance(result, Exception):
-            results.append(
-                ArgumentEvidence(
-                    argument=argument,
-                    warrant=warrant,
-                    results={},
-                    error=str(result),
-                )
-            )
-        else:
-            # Type narrowing: result is dict[str, Any] here after the isinstance check
-            results.append(
-                ArgumentEvidence(
-                    argument=argument,
-                    warrant=warrant,
-                    results=cast(dict[Any, Any], result),
-                )
-            )
-
-    return results
+    except Exception as e:
+        logger.error(f"Search failed for query '{query}': {str(e)}")
+        return SearchResult(query=query, content="", error=str(e))
 
 
-# Thread-based version (legacy)
-async def search_multiple_arguments_threaded(
-    arguments: list[tuple[str, str, list[str]]],
-    topic: str,
-    side: str,
-    model: str = "gemini-3-pro-preview",
-) -> list[ArgumentEvidence]:
-    """Search for evidence for multiple arguments using thread-based async.
-
-    This is a convenience wrapper that always uses the thread-based
-    implementation.
+async def search_queries(queries: List[str], model: str = "gemini-2.5-flash") -> List[SearchResult]:
+    """Executes a list of search queries concurrently
 
     Args:
-        arguments (list[tuple[str, str, list[str]]]): A list of tuples
-            containing the argument, warrant, and evidence needed.
-        topic (str): The debate topic.
-        side (str): Which side of the debate.
-        model (str, optional): The Gemini model to use.
-            Defaults to "gemini-2.5-pro".
+        queries (List[str]): List of search query strings
+        model (str, optional): The Gemini model to use. Defaults to "gemini-2.5-flash".
 
     Returns:
-        list[ArgumentEvidence]: A list of ArgumentEvidence objects containing
-            results for each argument.
+        List[SearchResult]: List of parsed search results containing content and sources
     """
-    return await search_multiple_arguments(
-        arguments, topic, side, model, use_threaded=True
-    )
+    if not queries:
+        return []
+
+    logger.info(f"Starting batch search for {len(queries)} queries...")
+
+    # Create tasks for all queries
+    tasks = [search_single_query(q, model=model) for q in queries]
+
+    # Run concurrently
+    results = await asyncio.gather(*tasks)
+
+    logger.info(f"Completed batch search. Success: {sum(1 for r in results if not r.error)}")
+    return list(results)

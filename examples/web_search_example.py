@@ -1,8 +1,8 @@
 """
-Example demonstrating web search capabilities for debate evidence gathering.
+Example demonstrating web search capabilities using Google Search Grounding.
 
-This example shows both single and multiple argument searches using the
-web_search module.
+This example shows both single query and batch query searches using the
+web_search service module.
 """
 
 import asyncio
@@ -13,44 +13,26 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from llm_debate_assistant.tools.web_search import (
-    search_for_evidence,
-    search_multiple_arguments,
-    search_multiple_arguments_threaded,
-)
+from llm_debate_assistant.services.web_search import search_queries, search_single_query
 
 console = Console()
 
 
-def display_single_search_example():
-    """Demonstrate single argument search with rich formatting."""
+async def display_single_search_example():
+    """Demonstrate single query search with rich formatting."""
     console.print("\n")
     console.print(
         Panel.fit(
-            "🔍 Single Argument Search Example",
+            "🔍 Single Query Search Example",
             style="bold cyan",
         )
     )
 
-    argument = "死刑具有强大的威慑作用，可以有效减少严重犯罪的发生。"
-    warrant = (
-        "通过执行死刑，潜在的犯罪分子会因为害怕死刑而不敢实施严重犯罪，"
-        "从而保护社会安全。"
-    )
-    evidence_needed = [
-        "统计数据：死刑执行前后严重犯罪率的变化",
-        "案例研究：具体国家或地区因死刑威慑而犯罪率下降的实例",
-        "专家观点：犯罪学家或法律专家对死刑威慑作用的分析",
-    ]
-    topic = "死刑是否应该被废除"
-    side = "正方"
+    query = "死刑威慑作用 犯罪率统计数据"
 
     # Display search parameters
-    console.print("\n[bold]Search Parameters:[/bold]")
-    console.print(f"  📋 Topic: [cyan]{topic}[/cyan]")
-    console.print(f"  ⚖️  Side: [cyan]{side}[/cyan]")
-    console.print(f"  💡 Argument: [yellow]{argument}[/yellow]")
-    console.print(f"  🔗 Warrant: [yellow]{warrant}[/yellow]")
+    console.print("\n[bold]Search Query:[/bold]")
+    console.print(f"  🔎 {query}")
 
     # Search with progress indicator
     with Progress(
@@ -58,82 +40,66 @@ def display_single_search_example():
         TextColumn("[progress.description]{task.description}"),
         console=console,
     ) as progress:
-        task = progress.add_task("Searching for evidence...", total=None)
+        task = progress.add_task("Searching...", total=None)
         start_time = time.perf_counter()
-        results = search_for_evidence(
-            argument, warrant, evidence_needed, topic, side, model="gemini-2.5-pro"
-        )
+        result = await search_single_query(query, model="gemini-2.5-flash")
         elapsed_time = time.perf_counter() - start_time
         progress.update(task, completed=True)
 
     console.print(f"\n[dim]⏱️  Search completed in {elapsed_time:.2f} seconds[/dim]")
 
-    # Display search results in a table
-    if results["search_results"]:
-        console.print("\n[bold green]✅ Search Results:[/bold green]")
+    # Check for errors
+    if result.error:
+        console.print(f"[bold red]❌ Error:[/bold red] {result.error}")
+        return
+
+    # Display search sources in a table
+    if result.sources:
+        console.print("\n[bold green]✅ Sources Found:[/bold green]")
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("#", style="dim", width=3)
         table.add_column("Title", style="cyan")
         table.add_column("URL", style="blue", overflow="fold")
 
-        for i, res in enumerate(results["search_results"], 1):
-            table.add_row(str(i), res["title"], res["uri"])
+        for i, source in enumerate(result.sources, 1):
+            table.add_row(str(i), source.title, source.uri)
 
         console.print(table)
     else:
-        console.print("[yellow]No search results found[/yellow]")
+        console.print("[yellow]No sources found[/yellow]")
 
-    # Display generated response
-    if results["text"]:
-        console.print("\n[bold green]📝 Generated Analysis:[/bold green]")
-        console.print(Panel(results["text"], border_style="green", padding=(1, 2)))
+    # Display summarized content
+    if result.content:
+        console.print("\n[bold green]📝 AI-Generated Summary:[/bold green]")
+        console.print(Panel(result.content, border_style="green", padding=(1, 2)))
     else:
-        console.print("[yellow]No response text generated[/yellow]")
+        console.print("[yellow]No content generated[/yellow]")
 
 
-async def display_multiple_search_example(use_threaded: bool = False):
-    """Demonstrate multiple argument searches with rich formatting.
-
-    Args:
-        use_threaded: If True, uses thread-based async (more reliable for
-            concurrent requests)
-    """
+async def display_batch_search_example():
+    """Demonstrate batch query searches with rich formatting."""
     console.print("\n\n")
 
-    method_name = "Thread-Based" if use_threaded else "Native Async"
     console.print(
         Panel.fit(
-            f"🔍 Multiple Arguments Concurrent Search ({method_name})",
+            "🔍 Batch Query Search Example",
             style="bold magenta",
         )
     )
 
-    topic = "死刑是否应该被废除"
-    side = "正方"
-
-    arguments = [
-        (
-            "死刑具有强大的威慑作用",
-            "潜在犯罪分子会因害怕死刑而不敢实施严重犯罪",
-            ["统计数据", "案例研究"],
-        ),
-        (
-            "死刑是不可逆的惩罚",
-            "一旦执行死刑，如果发现冤案将无法挽回",
-            ["冤案统计", "国际人权组织报告"],
-        ),
-        (
-            "死刑成本高于终身监禁",
-            "死刑案件的法律程序和关押成本实际上更高",
-            ["成本分析报告", "各国司法统计"],
-        ),
+    # Multiple queries on debate-related topics
+    queries = [
+        "死刑威慑作用 犯罪率统计",
+        "死刑冤案案例 中国",
+        "死刑成本 终身监禁成本对比",
+        "国际人权组织 死刑立场报告",
     ]
 
-    console.print(
-        f"\n[bold]Searching for evidence for {len(arguments)} arguments...[/bold]"
-    )
-    console.print(f"  📋 Topic: [cyan]{topic}[/cyan]")
-    console.print(f"  ⚖️  Side: [cyan]{side}[/cyan]\n")
+    console.print(f"\n[bold]Searching for {len(queries)} queries...[/bold]\n")
+
+    # Display queries
+    for i, query in enumerate(queries, 1):
+        console.print(f"  {i}. [cyan]{query}[/cyan]")
 
     # Search with progress indicator
     with Progress(
@@ -142,68 +108,66 @@ async def display_multiple_search_example(use_threaded: bool = False):
         console=console,
     ) as progress:
         task = progress.add_task(
-            f"Running {len(arguments)} concurrent searches ({method_name})...",
+            f"Running {len(queries)} concurrent searches...",
             total=None,
         )
         start_time = time.perf_counter()
-        if use_threaded:
-            multiple_results = await search_multiple_arguments_threaded(
-                arguments, topic, side
-            )
-        else:
-            multiple_results = await search_multiple_arguments(arguments, topic, side)
+        results = await search_queries(queries, model="gemini-2.5-flash")
         elapsed_time = time.perf_counter() - start_time
         progress.update(task, completed=True)
 
     console.print(
         f"\n[bold]⏱️  Total time: {elapsed_time:.2f}s | "
-        f"Average per argument: {elapsed_time/len(arguments):.2f}s[/bold]"
+        f"Average per query: {elapsed_time/len(queries):.2f}s[/bold]"
     )
 
-    # Display results for each argument
-    for i, result in enumerate(multiple_results, 1):
-        console.print(f"\n[bold cyan]─── Argument {i} ───[/bold cyan]")
-        console.print(f"[yellow]Argument:[/yellow] {result.argument}")
-        console.print(f"[yellow]Warrant:[/yellow] {result.warrant}")
+    # Display results for each query
+    for i, result in enumerate(results, 1):
+        console.print(f"\n[bold cyan]─── Query {i} ───[/bold cyan]")
+        console.print(f"[yellow]Query:[/yellow] {result.query}")
 
         if result.error:
             console.print(f"[bold red]❌ Error:[/bold red] {result.error}")
-        else:
-            num_results = len(result.results.get("search_results", []))
-            text_length = len(result.results.get("text", ""))
+            continue
 
-            console.print(f"[green]✅ Found {num_results} search results[/green]")
-            console.print(
-                f"[green]📝 Response length: {text_length} characters[/green]"
+        num_sources = len(result.sources)
+        content_length = len(result.content)
+
+        console.print(f"[green]✅ Found {num_sources} sources[/green]")
+        console.print(f"[green]📝 Content length: {content_length} characters[/green]")
+
+        # Show sources in a compact table
+        if result.sources:
+            table = Table(
+                show_header=True,
+                header_style="bold magenta",
+                box=None,
+                padding=(0, 1),
             )
+            table.add_column("#", style="dim", width=3)
+            table.add_column("Source", style="cyan", overflow="fold")
 
-            # Show search results in a compact table
-            if result.results.get("search_results"):
-                table = Table(
-                    show_header=True,
-                    header_style="bold magenta",
-                    box=None,
-                    padding=(0, 1),
-                )
-                table.add_column("#", style="dim", width=3)
-                table.add_column("Source", style="cyan", overflow="fold")
+            # Show first 3 sources
+            for j, source in enumerate(result.sources[:3], 1):
+                table.add_row(str(j), f"{source.title}")
 
-                for j, res in enumerate(result.results["search_results"][:3], 1):
-                    table.add_row(str(j), f"{res['title']}")
+            console.print(table)
 
-                console.print(table)
+            if num_sources > 3:
+                console.print(f"  [dim]... and {num_sources - 3} more sources[/dim]")
 
-                if num_results > 3:
-                    console.print(
-                        f"  [dim]... and {num_results - 3} more results[/dim]"
-                    )
+        # Show a snippet of the content
+        if result.content:
+            snippet = result.content[:200] + "..." if len(result.content) > 200 else result.content
+            console.print("\n[dim]Content preview:[/dim]")
+            console.print(f"  [italic]{snippet}[/italic]")
 
 
 async def main():
     """Run all examples."""
     console.print(
         Panel.fit(
-            "🎯 Web Search for Debate Evidence - Examples",
+            "🎯 Web Search Service - Examples",
             style="bold white on blue",
             padding=(1, 10),
         )
@@ -211,19 +175,10 @@ async def main():
 
     try:
         # Run single search example
-        display_single_search_example()
+        await display_single_search_example()
 
-        # Run multiple search example with native async
-        console.print(
-            "\n[bold yellow]Testing native async implementation...[/bold yellow]"
-        )
-        await display_multiple_search_example(use_threaded=False)
-
-        # Run multiple search example with thread-based async
-        console.print(
-            "\n[bold yellow]Testing thread-based implementation...[/bold yellow]"
-        )
-        await display_multiple_search_example(use_threaded=True)
+        # Run batch search example
+        await display_batch_search_example()
 
         console.print("\n")
         console.print(
