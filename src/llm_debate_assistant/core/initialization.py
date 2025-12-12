@@ -48,6 +48,7 @@ async def init_prompt_manager(opik_client: Optional["Opik"] = None) -> None:
             raise
 
     # Initialize PromptManager with Opik
+    # Uses default prompt names from core.prompt_config.OPIK_PROMPT_NAMES
     await pm.init(opik_client)
     logger.info(f"PromptManager initialized with {len(pm.list_prompts())} prompts from Opik")
 

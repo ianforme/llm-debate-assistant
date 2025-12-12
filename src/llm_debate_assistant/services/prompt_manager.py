@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING, Dict, Optional
 import logging
 
+from llm_debate_assistant.core.prompt_config import OPIK_PROMPT_NAMES
+
 if TYPE_CHECKING:
     from opik import Opik
 
@@ -34,7 +36,7 @@ class PromptManager:
         Args:
             client (Optional["Opik"]): Optional Opik client instance
             prompt_names (Optional[list[str]]): List of prompt names to fetch from Opik.
-                         If None, uses default topic research prompts.
+                         If None, uses default prompts from core.prompt_config.
 
         Example:
             >>> import opik
@@ -44,21 +46,9 @@ class PromptManager:
         """
         self._client = client
 
-        # Default prompts to fetch (non-exhaustive, development in progress)
+        # Default prompts to fetch from config
         if prompt_names is None:
-            prompt_names = [
-                "KEY_TERMS_PROMPT",
-                "CORE_CLAIMS_PROMPT",
-                "ARGUMENT_DEVELOPMENT_PROMPT",
-                "VALUE_ADVOCACY_PROMPT",
-                "COMPARATIVE_ANALYSIS_PROMPT",
-                "EVIDENCE_EXTRACTION_PROMPT",
-                "DEEP_EVIDENCE_PROMPT",
-                "OPENING_DRAFT_PROMPT",
-                "OPENING_EVALUATION_PROMPT",
-                "OPENING_IMPROVEMENT_PROMPT",
-                "OPENING_STRATEGY_SELECTION_PROMPT",
-            ]
+            prompt_names = OPIK_PROMPT_NAMES
 
         if client:
             # Load prompts from Opik

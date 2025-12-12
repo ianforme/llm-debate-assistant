@@ -15,14 +15,10 @@ from .llm import DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL, get_llm
 from .manage_todo_list import TaskStatus, TodoItem, TodoList, manage_todo_list
 from .virtual_filesystem import VirtualFilesystem
 from .web_search import (
-    ArgumentEvidence,
-    async_search_for_evidence,
-    async_search_for_evidence_threaded,
-    async_search_web,
-    search_for_evidence,
-    search_multiple_arguments,
-    search_multiple_arguments_threaded,
-    search_web,
+    SearchResult,
+    SearchSource,
+    search_queries,
+    search_single_query,
 )
 
 __all__ = [
@@ -48,12 +44,8 @@ __all__ = [
     "TaskStatus",
     "manage_todo_list",
     # Web search tools
-    "search_web",
-    "async_search_web",
-    "search_for_evidence",
-    "async_search_for_evidence",
-    "async_search_for_evidence_threaded",
-    "search_multiple_arguments",
-    "search_multiple_arguments_threaded",
-    "ArgumentEvidence",
+    "search_single_query",
+    "search_queries",
+    "SearchResult",
+    "SearchSource",
 ]
