@@ -54,8 +54,14 @@ def _extract_search_data(response: Any, query: str) -> SearchResult:
     candidate = response.candidates[0]
 
     # 1. Extract Text Content
+    # Note: When API returns TOO_MANY_TOOL_CALLS or other edge cases,
+    # parts might be None instead of a list, so we must check explicitly
     text_parts = []
-    if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
+    if (
+        hasattr(candidate, "content")
+        and hasattr(candidate.content, "parts")
+        and candidate.content.parts is not None
+    ):
         for part in candidate.content.parts:
             if hasattr(part, "text") and part.text:
                 text_parts.append(part.text)
@@ -66,7 +72,8 @@ def _extract_search_data(response: Any, query: str) -> SearchResult:
         gm = candidate.grounding_metadata
         result.raw_metadata = gm
 
-        if hasattr(gm, "grounding_chunks") and gm.grounding_chunks:
+        # Must check if gm.grounding_chunks is not None before iterating
+        if hasattr(gm, "grounding_chunks") and gm.grounding_chunks is not None:
             for chunk in gm.grounding_chunks:
                 # Check for 'web' attribute which contains the source info
                 if hasattr(chunk, "web"):
