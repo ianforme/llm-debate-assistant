@@ -2,138 +2,99 @@
 """
 Strategic selection operation.
 
-Selects key terms and arguments from topic_research for opening statement.
+Generates the strategic blueprint for constructive speech.
 """
 
 import logging
-from typing import Any
+from typing import Literal
 
 from llm_debate_assistant.services.llm import get_llm
 from llm_debate_assistant.services.prompt_manager import get_prompt_manager
 from llm_debate_assistant.agents.deep_preparation.segments.constructive_speech.schema import (
-    OpeningState,
-    OpeningStrategy,
+    ConstructiveStrategy,
+)
+from llm_debate_assistant.agents.deep_preparation.segments.topic_research.schema import (
+    TopicResearchResult,
 )
 
 logger = logging.getLogger(__name__)
 
 
-async def select_strategy_node(state: OpeningState) -> dict[str, Any]:
-    """Select strategic key terms and arguments for opening.
+async def generate_constructive_strategy(
+    topic: str,
+    side: Literal["正方", "反方"],
+    research: TopicResearchResult,
+) -> ConstructiveStrategy:
+    """Generate the strategic blueprint for the constructive speech.
 
-    Analyzes topic_research output and selects:
-    - 2-3 most favorable key term definitions
-    - 3 strongest arguments (considering strength, strategic fit, opponent vulnerabilities)
-    - Value framework and comparison standard
-    - Rhetorical approach
+    Analyzes research output and orchestrates:
+    - Framing definitions
+    - The 'Trinity' of arguments (Hook, Pivot, Anchor)
+    - Narrative tone and value premise
 
     Args:
-       state (OpeningState): Current state including research_context.
+       topic (str): The debate topic.
+       side (Literal["正方", "反方"]): Which side we are arguing for.
+       research (TopicResearchResult): The topic research results.
 
     Returns:
-      dict[str, Any]: Updated state with selected opening strategy.
+      ConstructiveStrategy: The generated strategy.
     """
-    research = state["research_context"]
-    topic = state["topic"]
-    side = state["side"]
-    filesystem = state["filesystem"]
+    logger.info(f"Generating constructive strategy for {topic} ({side})")
 
-    # Type narrowing assertions
-    assert research is not None
-    assert filesystem is not None
+    # --- 1. Build Prompt Context ---
 
-    logger.info(f"Selecting opening strategy for {topic} ({side})")
-
-    # Build formatted sections for the prompt
-    # Key terms section
-    key_terms_section = chr(10).join(
+    # Key Terms
+    key_terms_section = "\n".join(
         f"""
-      **{i+1}. {term.term}**
-      - 基准定义：{term.standard_definition}
-      - 我方战略定义：{term.strategic_definition.definition}
-      - 权威锚点：{term.strategic_definition.authority_anchor}
-      - 收纳与切割：{term.strategic_definition.inclusion_exclusion}
-      - 对方定义的陷阱：{term.opponents_trap}
-      - 举证责任转移：{term.burden_shift}
-      """
+        **{i+1}. {term.term}**
+        - Def: {term.strategic_definition.definition}
+        - Strategy: {term.strategic_definition.inclusion_exclusion}
+        - Trap to Avoid: {term.opponents_trap}
+        """
         for i, term in enumerate(research.key_terms)
     )
 
-    # Arguments section
-    arguments_section = chr(10).join(
+    # Arguments (Rich Context for Selection)
+    arguments_section = "\n".join(
         f"""
-      **论点{i+1}：{arg.claim}**
-      - 类型：{arg.type} ({"价值论证" if arg.type == "Value" else "实利论证"})
-      - 推导逻辑：{arg.warrant[:200]}...
-      - 影响/实利：{arg.impact[:150]}...
-      """
+        **[Candidate {i+1}] {arg.claim}**
+        - Type: {arg.type}
+        - Warrant: {arg.warrant[:300]}...
+        - Impact: {arg.impact[:200]}...
+        - Evidence Snippet: {str(arg.evidence)[:150]}...
+        """
         for i, arg in enumerate(research.our_research.arguments)
     )
 
-    # Strategic recommendations section
-    strategic_recommendations = chr(10).join(
+    # Analysis Sections
+    strategic_recs = "\n".join(
         f"- {rec}" for rec in research.analysis.strategic_recommendations
     )
+    our_advs = "\n".join(f"- {a}" for a in research.analysis.our_advantages)
+    opp_vulns = "\n".join(f"- {v}" for v in research.analysis.opponent_vulnerabilities)
 
-    # Our advantages section
-    our_advantages = chr(10).join(f"- {adv}" for adv in research.analysis.our_advantages)
+    # --- 2. Call LLM ---
 
-    # Opponent vulnerabilities section
-    opponent_vulnerabilities = chr(10).join(
-        f"- {vuln}" for vuln in research.analysis.opponent_vulnerabilities
-    )
-
-    # Get prompt template from prompt manager
     pm = get_prompt_manager()
-    prompt_template = pm.get("OPENING_STRATEGY_SELECTION_PROMPT")
-
-    # Format the prompt with all variables
-    prompt = prompt_template.format(
+    prompt = pm.get("CONSTRUCTIVE_STRATEGY_PROMPT").format(
         topic=topic,
         side=side,
-        key_terms_count=len(research.key_terms),
         key_terms_section=key_terms_section,
-        arguments_count=len(research.our_research.arguments),
         arguments_section=arguments_section,
+        strategic_recommendations=strategic_recs,
+        our_advantages=our_advs,
+        opponent_vulnerabilities=opp_vulns,
         value_framework=research.our_research.value_framework,
         comparison_standard=research.our_research.comparison_standard,
-        strategic_recommendations=strategic_recommendations,
-        our_advantages=our_advantages,
-        opponent_vulnerabilities=opponent_vulnerabilities,
     )
 
-    # Use OpenAI for structured output (Gemini thinking mode conflicts with structured output)
+    # Use OpenAI + JSON Mode for complex structural orchestration
     llm = get_llm(provider="openai", temperature=0.4)
-    structured_llm = llm.with_structured_output(OpeningStrategy)
+    structured_llm = llm.with_structured_output(ConstructiveStrategy)
 
-    logger.info("Calling OpenAI LLM for strategic selection...")
     strategy = await structured_llm.ainvoke(prompt)
 
-    # Debug logging to see what Gemini returns
-    logger.info(f"Structured output type: {type(strategy)}")
-    logger.debug(f"Structured output content: {strategy}")
+    logger.info(f"Strategy Generated: Tone='{strategy.speech_tone}'")
 
-    # Handle union type (dict or Pydantic model)
-    if isinstance(strategy, dict):
-        logger.info("Converting dict to OpeningStrategy")
-        strategy = OpeningStrategy(**strategy)
-    elif not isinstance(strategy, OpeningStrategy):
-        # Gemini might return something unexpected - try to handle it
-        logger.error(f"Unexpected type from Gemini: {type(strategy)}")
-        logger.error(f"Content: {strategy}")
-        raise TypeError(
-            f"Expected OpeningStrategy or dict, got {type(strategy)}. "
-            f"This might be a Gemini structured output issue."
-        )
-
-    logger.info(
-        f"Selected strategy: {len(strategy.selected_key_terms)} terms, "
-        f"3 arguments, {strategy.rhetorical_approach} approach"
-    )
-
-    # Save to filesystem (in /opening/ subfolder for organization)
-    filesystem.write(  # type: ignore[attr-defined]
-        "/constructive_speech/opening_strategy.json", strategy.model_dump_json(indent=2, ensure_ascii=False)
-    )
-
-    return {"opening_strategy": strategy}
+    return strategy

@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Opening statement operations."""
+"""Constructive speech operations."""
 
-from .load_research import load_research_node
-from .selection import select_strategy_node
-from .deep_evidence import deep_evidence_node
-from .draft import draft_statement_node
-from .evaluation import evaluate_statement_node, improve_statement_node
+from .load_research import load_research
+from .selection import generate_constructive_strategy
+from .deep_evidence import deep_evidence_search
+from .draft import draft_constructive_speech
+from .evaluation import critique_constructive_speech
 
 __all__ = [
-    "load_research_node",
-    "select_strategy_node",
-    "deep_evidence_node",
-    "draft_statement_node",
-    "evaluate_statement_node",
-    "improve_statement_node",
+    "load_research",
+    "generate_constructive_strategy",
+    "deep_evidence_search",
+    "draft_constructive_speech",
+    "critique_constructive_speech",
 ]

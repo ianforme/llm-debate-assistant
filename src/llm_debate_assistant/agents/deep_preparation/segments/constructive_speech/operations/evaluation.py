@@ -2,218 +2,99 @@
 """
 Evaluation and improvement operations.
 
-Evaluates opening statement quality and provides improvement guidance.
+Evaluates constructive speech quality and provides improvement guidance.
 """
 
 import logging
-from typing import Any
-
-
-def count_visible_chars(text: str) -> int:
-    """Count visible characters (excluding spaces, newlines, tabs).
-
-    This is the standard for debate character limits - only counts
-    Chinese characters, punctuation, English letters, and numbers.
-    """
-    return len("".join(c for c in text if not c.isspace()))
-
+from typing import List, Literal
 
 from llm_debate_assistant.services.llm import get_llm
 from llm_debate_assistant.services.prompt_manager import get_prompt_manager
 from llm_debate_assistant.agents.deep_preparation.segments.constructive_speech.schema import (
-    OpeningState,
-    EvaluationResult,
+    CritiqueResult,
+    ConstructiveStrategy,
+    ArgumentEvidence,
 )
-from llm_debate_assistant.agents.deep_preparation.storage import save_session_metadata
+from llm_debate_assistant.agents.deep_preparation.shared.utils import (
+    count_visible_chars,
+)
 
 logger = logging.getLogger(__name__)
 
 
-async def evaluate_statement_node(state: OpeningState) -> dict[str, Any]:
-    """Evaluate opening statement quality.
+async def critique_constructive_speech(
+    topic: str,
+    side: Literal["正方", "反方"],
+    draft: str,
+    strategy: ConstructiveStrategy,
+    deep_evidence: List[ArgumentEvidence],
+) -> CritiqueResult:
+    """Evaluate the constructive speech draft against strategic blueprint and evidence.
 
-    Checks:
-    - Strategic alignment with selected strategy
-    - Evidence usage and citation quality
-    - Logical coherence and flow
-    - Length compliance (max 1200 chars)
-    - Oral style and persuasiveness
-    """
-    draft = state["draft"]
-    strategy = state["opening_strategy"]
-    deep_evidence = state["deep_evidence"]
-    topic = state["topic"]
-    side = state["side"]
-
-    # Type narrowing assertions
-    assert draft is not None
-    assert strategy is not None
-    assert deep_evidence is not None
-
-    char_count = count_visible_chars(draft)
-    logger.info(
-        f"Evaluating opening statement ({char_count} visible characters, {len(draft)} total)"
-    )
-
-    # Build formatted sections for the prompt
-    # Key terms list
-    key_terms_list = ", ".join(term.term for term in strategy.selected_key_terms)
-
-    # Arguments list
-    arguments_list = chr(10).join(
-        f"{i+1}. {arg.claim}"
-        for i, arg in enumerate(
-            sorted(strategy.selected_arguments, key=lambda x: x.order)
-        )
-    )
-
-    # Evidence preview - compact summary for context
-    evidence_preview = chr(10).join(
-        f"论点{i+1}: {len(ev.sources)}个搜索来源, "
-        f"{'有' if ev.best_quotes else '无'}搜索结果文本"
-        for i, ev in enumerate(deep_evidence)
-    )
-
-    # Get prompt template from prompt manager
-    pm = get_prompt_manager()
-    prompt_template = pm.get("OPENING_EVALUATION_PROMPT")
-
-    # Format the prompt with all variables
-    prompt = prompt_template.format(
-        topic=topic,
-        side=side,
-        key_terms_list=key_terms_list,
-        arguments_list=arguments_list,
-        evidence_preview=evidence_preview,
-        value_framework=strategy.value_framework,
-        comparison_standard=strategy.comparison_standard,
-        rhetorical_approach=strategy.rhetorical_approach,
-        draft_length=count_visible_chars(draft),
-        draft=draft,
-    )
-
-    # Use OpenAI for structured output (Gemini thinking mode conflicts with structured output)
-    llm = get_llm(provider="openai", temperature=0.3)  # Low temperature for consistency
-    structured_llm = llm.with_structured_output(EvaluationResult)
-
-    logger.info("Calling OpenAI LLM for evaluation...")
-    evaluation = await structured_llm.ainvoke(prompt)
-
-    # Debug logging
-    logger.info(f"Structured output type: {type(evaluation)}")
-
-    # Handle union type
-    if isinstance(evaluation, dict):
-        logger.info("Converting dict to EvaluationResult")
-        evaluation = EvaluationResult(**evaluation)
-    elif not isinstance(evaluation, EvaluationResult):
-        logger.error(f"Unexpected type from Gemini: {type(evaluation)}")
-        raise TypeError(
-            f"Expected EvaluationResult or dict, got {type(evaluation)}. "
-            f"This might be a Gemini structured output issue."
-        )
-
-    logger.info(
-        f"Evaluation complete: {evaluation.result} (score: {evaluation.score}/10)"
-    )
-
-    # Increment iteration count
-    new_iteration_count = state.get("iteration_count", 0) + 1
-
-    # Save session metadata when evaluation is complete (pass or max iterations reached)
-    max_iterations = state.get("max_iterations", 3)
-    filesystem = state.get("filesystem")
-
-    if filesystem and (
-        evaluation.result == "pass" or new_iteration_count >= max_iterations
-    ):
-        logger.info("Saving opening session metadata for cache lookup")
-        save_session_metadata(
-            filesystem=filesystem,
-            topic=state["topic"],
-            side=state["side"],
-            segment="opening",
-        )
-
-    return {
-        "evaluation": evaluation.model_dump(),
-        "iteration_count": new_iteration_count,
-    }
-
-
-async def improve_statement_node(state: OpeningState) -> dict[str, Any]:
-    """Improve opening statement based on evaluation feedback.
-
-    Uses evaluation feedback to generate an improved version of the draft.
+    Acts as a 'Gatekeeper'. It checks:
+    1. Tactical Execution: Did we use the Hook/Pivot/Anchor structure?
+    2. Evidence Fidelity: Did we use the Deep Search data?
+    3. Constraints: Is the length appropriate?
 
     Args:
-        state (OpeningState): Current state including draft and evaluation.
-
+        topic (str): The debate topic.
+        side (Literal["正方", "反方"]): Which side we are arguing for.
+        draft (str): The draft speech content.
+        strategy (ConstructiveStrategy): The constructive strategy.
+        deep_evidence (List[ArgumentEvidence]): Evidence for each argument.
     Returns:
-        dict[str, Any]: Updated state with improved draft.
+        CritiqueResult: The critique result with decision and feedback.
     """
-    draft = state["draft"]
-    evaluation = state["evaluation"]
-    topic = state["topic"]
-    side = state["side"]
-    filesystem = state["filesystem"]
+    char_count = count_visible_chars(draft)
+    logger.info(f"🧐 Critiquing constructive speech ({char_count} visible chars)...")
 
-    # Type narrowing assertions, mypy cannot infer from dict access
-    assert draft is not None
-    assert evaluation is not None
-    assert filesystem is not None
+    # Prepare Context Variables
+    # Strategy Expectations: Tell the evaluator what tactical role each argument was assigned
+    strategy_expectations = chr(10).join(
+        f"- Arg {arg.order} (Role: {arg.role}):\n"
+        f"  Target Claim: '{arg.claim}'\n"
+        f"  Required Logic: {arg.warrant[:100]}..."
+        for arg in sorted(strategy.selected_arguments, key=lambda x: x.order)
+    )
 
-    logger.info(f"Improving opening statement (iteration {state['iteration_count']})")
+    # Evidence Checklist: Provide specific evidence counts as checkpoints
+    evidence_checklist = "无可用深度证据"
+    if deep_evidence:
+        evidence_checklist = chr(10).join(
+            f"- For Arg {i+1} ({ev.argument_claim[:15]}...):\n"
+            f"  Expected Stats: {len(ev.statistics)} items\n"
+            f"  Expected Cases: {len(ev.case_studies)} items"
+            for i, ev in enumerate(deep_evidence)
+        )
 
-    # Build compact context for improvement
-    # Keep strengths and weaknesses for context
-    strengths_list = chr(10).join(f"✓ {s}" for s in evaluation.get("strengths", []))
-    weaknesses_list = chr(10).join(f"✗ {w}" for w in evaluation.get("weaknesses", []))
-
-    # Get prompt template from prompt manager
+    # Call LLM
     pm = get_prompt_manager()
-    prompt_template = pm.get("OPENING_IMPROVEMENT_PROMPT")
+    prompt_template = pm.get("CONSTRUCTIVE_CRITIQUE_PROMPT")
 
-    # Simplified prompt - removed redundant context (evidence, arguments already in draft)
     prompt = prompt_template.format(
         topic=topic,
         side=side,
         draft=draft,
-        evaluation_score=evaluation["score"],
-        strengths_list=strengths_list,
-        weaknesses_list=weaknesses_list,
-        evaluation_feedback=evaluation.get("feedback", ""),
+        strategy_expectations=strategy_expectations,
+        evidence_checklist=evidence_checklist,
+        word_count=char_count,
+        comparison_standard=strategy.comparison_standard,
     )
 
-    # Use Gemini for better Chinese character counting and constraint adherence
-    llm = get_llm(provider="gemini", temperature=0.8)
+    llm = get_llm(provider="openai", temperature=0.1)
+    structured_llm = llm.with_structured_output(CritiqueResult)
 
-    logger.info("Calling Gemini LLM for improvement...")
-    response = await llm.ainvoke(prompt)
+    logger.info("Calling OpenAI LLM for critique...")
+    critique = await structured_llm.ainvoke(prompt)
 
-    # Extract improved draft
-    if hasattr(response, "content"):
-        content = response.content
-        # Handle both string and list content types
-        if isinstance(content, list):
-            improved_draft = str(content)
-        else:
-            improved_draft = content
-    else:
-        improved_draft = str(response)
-
-    improved_draft = improved_draft.strip()
-
-    char_count = count_visible_chars(improved_draft)
+    # Handle Result & Logging
     logger.info(
-        f"Improvement complete: {char_count} visible characters, {len(improved_draft)} total"
+        f"Critique Decision: {critique.decision.upper()} (Score: {critique.score})"
     )
 
-    # Save improved version (in /opening/ subfolder for organization)
-    filesystem.write("/constructive_speech/draft.txt", improved_draft)  # type: ignore[attr-defined]
-    filesystem.write(  # type: ignore[attr-defined]
-        f"/constructive_speech/draft_v{state['iteration_count']}.txt",
-        improved_draft,
-    )  # Keep version history
+    if critique.decision == "needs_revision":
+        logger.info(f"Issues: {critique.critical_issues}")
+    else:
+        logger.info("Draft passed evaluation.")
 
-    return {"draft": improved_draft}
+    return critique

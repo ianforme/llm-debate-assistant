@@ -5,54 +5,49 @@ Load topic research operation.
 Loads completed topic_research results from filesystem.
 """
 
-import json
 import logging
-from typing import Any
+from typing import Literal, Optional
 
-from llm_debate_assistant.agents.deep_preparation.segments.constructive_speech.schema import (
-    OpeningState,
-)
 from llm_debate_assistant.agents.deep_preparation.segments.topic_research.schema import (
     TopicResearchResult,
 )
-from llm_debate_assistant.agents.deep_preparation.storage import find_session_by_topic
-from llm_debate_assistant.services.disk_filesystem import DiskFilesystem
+from llm_debate_assistant.agents.deep_preparation.storage import (
+    DiskFilesystem,
+    find_session_by_topic,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def load_research_node(state: OpeningState) -> dict[str, Any]:
-    """Load topic_research results.
-
-    Primary path: Use research_context if already provided (by orchestrator).
-    Fallback path: Find and load from topic_research session (for standalone use).
+def load_research(
+    topic: str,
+    side: Literal["正方", "反方"],
+    research_context: Optional[TopicResearchResult] = None,
+) -> TopicResearchResult:
+    """Load topic_research results with robust validation.
 
     Args:
-        state (OpeningState): Current state of the opening segment.
+        topic (str): The debate topic.
+        side (Literal["正方", "反方"]): Which side we are arguing for.
+        research_context (Optional[TopicResearchResult]): Optional pre-loaded research context (Orchestrator mode).
 
     Returns:
-        dict[str, Any]: Updated state with loaded research_context.
+        TopicResearchResult: The loaded research result.
 
     Raises:
         FileNotFoundError: If topic_research results not found.
+        RuntimeError: If research data is corrupted or invalid.
     """
-    # Primary path: Check if research already provided
-    # (e.g., when run via orchestrator)
-    # The state will already have research_context populated
+    # 1. Primary path: Orchestrator injection
+    if research_context is not None:
+        logger.info("Using research_context provided (Orchestrator Mode)")
+        return research_context
 
-    if state.get("research_context") is not None:
-        logger.info("Using research_context provided in state")
-        return {}  # Already loaded, no changes needed
+    # 2. Fallback path: Standalone Mode (Load from disk)
+    logger.info(
+        f"Standalone Mode: Searching for topic_research for '{topic}' ({side})..."
+    )
 
-    # Fallback path: Load from topic_research session
-    topic = state["topic"]
-    side = state["side"]
-
-    logger.info(f"Loading topic research for {topic} ({side})")
-
-    # Find the topic_research session
-    # Doing a lookup based on topic, side, and segment within
-    # the filesystem storage
     research_session_id = find_session_by_topic(
         topic=topic,
         side=side,
@@ -61,50 +56,39 @@ def load_research_node(state: OpeningState) -> dict[str, Any]:
 
     if not research_session_id:
         error_msg = (
-            f"Topic research session not found for topic='{topic}', side='{side}'.\n"
-            f"Please run the topic_research segment first."
+            f"❌ Missing Prerequisite: Topic Research not found.\n"
+            f"  Topic: {topic}\n"
+            f"  Side: {side}\n"
+            f"Action: Please run the 'topic_research' subgraph first."
         )
         logger.error(error_msg)
         raise FileNotFoundError(error_msg)
-
-    logger.info(f"Found topic_research session: {research_session_id}")
 
     try:
-        # Create filesystem for the topic_research session
-        # TODO: accommodate other storage backends if needed
         research_fs = DiskFilesystem(session_id=research_session_id)
-
-        # Load research from topic_research filesystem
         result_data = research_fs.read("/research/research.json")
 
-        # Check if read was successful
         if not result_data.get("success"):
-            raise FileNotFoundError(result_data.get("message", "Failed to read research.json"))
+            raise FileNotFoundError(f"Read failed: {result_data.get('message')}")
 
-        # Extract the actual JSON content
         content = result_data.get("content")
-        if content is None:
-            raise FileNotFoundError("No content found in research.json")
+        if not content:
+            raise ValueError("research.json is empty")
 
-        # Parse the JSON string
-        research_dict = json.loads(content)
-        research_result = TopicResearchResult(**research_dict)
+        try:
+            research_result = TopicResearchResult.model_validate_json(content)
+        except AttributeError:
+            research_result = TopicResearchResult.parse_raw(content)
 
         logger.info(
-            f"Loaded research: {len(research_result.key_terms)} key terms, "
-            f"{len(research_result.our_research.arguments)} arguments"
+            f"✅ Successfully loaded research context:\n"
+            f"  - Terms: {len(research_result.key_terms)}\n"
+            f"  - Our Args: {len(research_result.our_research.arguments)}\n"
+            f"  - Opponent Args: {len(research_result.opponent_research.arguments)}"
         )
 
-        return {"research_context": research_result}
+        return research_result
 
-    except FileNotFoundError:
-        error_msg = (
-            f"Topic research not found for topic='{topic}', side='{side}'.\n"
-            f"Please run the topic_research segment first, or use the orchestrator "
-            f"to run the complete preparation workflow."
-        )
-        logger.error(error_msg)
-        raise FileNotFoundError(error_msg)
     except Exception as e:
-        logger.error(f"Error loading research: {e}")
-        raise
+        logger.exception(f"Failed to load research session {research_session_id}")
+        raise RuntimeError(f"Corrupted research data: {str(e)}") from e

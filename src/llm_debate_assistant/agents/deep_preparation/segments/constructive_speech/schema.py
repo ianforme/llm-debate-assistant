@@ -1,60 +1,100 @@
 # -*- coding: utf-8 -*-
 """
-Schema for opening statement segment.
+Schema for constructive speech segment.
 
-This version leverages topic_research output for strategic selection and composition.
+This version leverages topic_research output for strategic selection and composition
+of the constructive speech. It defines the data models for strategy, evidence,
+drafts, critiques, and overall segment state.
 """
 
-from typing import Literal, Optional, TypedDict
-from pydantic import BaseModel, Field
+from typing import List, Literal, Optional, TypedDict
+from pydantic import BaseModel, Field, ConfigDict
 
 from llm_debate_assistant.agents.deep_preparation.segments.topic_research.schema import (
     TopicResearchResult,
 )
 
 
-class SelectedKeyTerm(BaseModel):
-    """A key term selected for use in opening statement."""
+class SelectedTerm(BaseModel):
+    """A key term selected for the constructive speech."""
 
-    term: str = Field(description="The key term")
-    our_definition: str = Field(description="Our strategic definition to use")
-    rationale: str = Field(description="Why this term is important for opening")
+    term: str
+    definition_used: str = Field(
+        description="The specific definition text to be used in the speech."
+    )
+    strategic_usage: str = Field(
+        description="How to use this definition to frame the debate (e.g., 'exclude X', 'shift burden')."
+    )
 
 
 class SelectedArgument(BaseModel):
-    """An argument selected from research for opening statement."""
+    """An argument selected for the constructive speech."""
 
-    claim: str = Field(description="The argument claim")
-    type: str = Field(description="Value or Practical")
-    warrant: str = Field(description="Logical reasoning/mechanism supporting the claim")
-    impact: str = Field(description="Ultimate benefit or problem solved")
-    selection_rationale: str = Field(
-        description="Why this argument was selected (strategic fit, rhetorical strength, etc.)"
+    claim: str
+    warrant: str
+    impact: str
+    evidence_summary: str = Field(
+        description="A brief summary of the key evidence to include."
     )
-    order: int = Field(description="Order to present (1, 2, or 3)")
+    order: int = Field(description="Position in the speech: 1, 2, or 3.")
+    role: Literal["The Hook", "The Pivot", "The Anchor"] = Field(
+        description="Strategic role: 'The Hook' (Strongest/Intuitive), 'The Pivot' (Pre-emptive/Strategic), 'The Anchor' (Value/Deep)."
+    )
+    rationale: str = Field(
+        description="Why this argument was selected and placed in this order."
+    )
 
 
-class OpeningStrategy(BaseModel):
-    """Strategic plan for opening statement."""
+class ConstructiveStrategy(BaseModel):
+    """The strategic blueprint for the constructive speech."""
 
-    selected_key_terms: list[SelectedKeyTerm] = Field(
-        description="2-3 key terms to define",
-        min_length=2,
-        max_length=3,
+    selected_key_terms: List[SelectedTerm] = Field(
+        description="2-3 terms to define for strategic framing."
     )
-    selected_arguments: list[SelectedArgument] = Field(
-        description="Exactly 3 arguments to present",
-        min_length=3,
-        max_length=3,
+
+    selected_arguments: List[SelectedArgument] = Field(
+        description="Exactly 3 arguments, ordered strategically."
     )
-    value_framework: str = Field(description="Value framework to emphasize")
-    comparison_standard: str = Field(description="How to frame success/evaluation")
-    rhetorical_approach: str = Field(
-        description="Overall rhetorical strategy (e.g., assertive, preemptive, defensive)"
+
+    value_premise: str = Field(
+        description="The overarching moral/philosophical theme of the case."
     )
-    strategic_rationale: str = Field(
-        description="Why this combination of terms + arguments works well together"
+    comparison_standard: str = Field(
+        description="The criterion for judging the round (e.g., 'Net Benefits', 'Rights Protection')."
     )
+
+    speech_tone: str = Field(
+        description="The rhetorical tone (e.g., 'Empathetic', 'Analytical', 'Urgent')."
+    )
+
+    strategic_alignment: str = Field(
+        description="Explanation of how this strategy exploits opponent weaknesses and leverages our strengths."
+    )
+
+
+class SearchPlan(BaseModel):
+    """Output schema for the Planning phase."""
+
+    queries: List[str] = Field(
+        description="3-5 highly specific search queries targeting dates, numbers, reports, and cases."
+    )
+
+
+class ExtractedItem(BaseModel):
+    """Single evidence item."""
+
+    text: str = Field(description="The content of the evidence.")
+    source_id: int = Field(description="The Source ID.")
+
+
+class SynthesizedEvidence(BaseModel):
+    """Pydantic V2 version Schema."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    statistics: List[ExtractedItem] = Field(default_factory=list, alias="Statistics")
+    quotes: List[ExtractedItem] = Field(default_factory=list, alias="Quotes")
+    case_studies: List[ExtractedItem] = Field(default_factory=list, alias="CaseStudies")
 
 
 class EvidenceSource(BaseModel):
@@ -88,48 +128,59 @@ class ArgumentEvidence(BaseModel):
     )
 
 
-class EvaluationResult(BaseModel):
-    """Evaluation of drafted opening statement."""
+class CritiqueResult(BaseModel):
+    """Evaluation of drafted constructive speech."""
 
-    result: Literal["pass", "fail"] = Field(description="Pass or fail")
-    score: int = Field(description="Quality score 1-10", ge=1, le=10)
-    strengths: list[str] = Field(description="What the statement does well")
-    weaknesses: list[str] = Field(description="Areas needing improvement")
-    feedback: str = Field(
-        description="Detailed feedback for improvement (if fail)",
-        default="",
+    score: int = Field(description="Overall score 1-10", ge=1, le=10)
+    decision: Literal["pass", "needs_revision"] = Field(
+        description="Whether the draft passes or needs revision"
     )
-    strategy_alignment: bool = Field(description="Whether statement aligns with selected strategy")
+
+    strategy_compliance: str = Field(
+        description="Comment on Hook/Pivot/Anchor execution"
+    )
+    evidence_usage: str = Field(
+        description="Comment on whether specific provided evidence was used"
+    )
+
+    critical_issues: List[str] = Field(description="List of major failures to fix")
+    suggestions: List[str] = Field(description="Specific instructions for the rewrite")
 
 
-class OpeningState(TypedDict):
-    """State for opening statement workflow."""
+class ConstructiveState(TypedDict, total=False):
+    """State for the Constructive Speech (Case Construction) workflow.
 
-    # Input
+    Note: Non-serializable dependencies (filesystem) are passed via config["configurable"]
+    for proper checkpointing support.
+    """
+
     topic: str
     side: Literal["正方", "反方"]
-    filesystem: object  # Filesystem instance
 
-    # Phase outputs
+    time_limit: str
+    word_count_limit: int
+
     research_context: Optional[TopicResearchResult]
-    opening_strategy: Optional[OpeningStrategy]
-    deep_evidence: Optional[list[ArgumentEvidence]]
-    draft: Optional[str]
-    evaluation: Optional[dict]
 
-    # Control
+    constructive_strategy: Optional[ConstructiveStrategy]
+
+    deep_evidence: Optional[List[ArgumentEvidence]]
+
+    draft_content: Optional[str]
+
+    critique: Optional[CritiqueResult]
+
     iteration_count: int
-    max_iterations: int
 
 
-class OpeningResult(BaseModel):
-    """Final result from opening segment."""
+class ConstructiveResult(BaseModel):
+    """Final result from constructive speech segment."""
 
     topic: str
     side: Literal["正方", "反方"]
-    strategy: OpeningStrategy
+    strategy: ConstructiveStrategy
     draft: str
-    evaluation: EvaluationResult
+    critique: CritiqueResult
     iterations: int
 
     def to_context_dict(self) -> dict:
