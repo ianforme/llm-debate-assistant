@@ -52,7 +52,7 @@ async def create_outline_node(state: DebateState, config: RunnableConfig) -> dic
             "messages": [SystemMessage(content=message)],
         }
     except Exception as e:
-        raise RuntimeError(f"Failed to create outline: {e}\n" f"Topic: {state['topic']}") from e
+        raise RuntimeError(f"Failed to create outline: {e}\nTopic: {state['topic']}") from e
 
 
 # Tool Node: Model has been pre-configured in the search function
@@ -259,7 +259,7 @@ async def evaluate_statement_node(state: DebateState, config: RunnableConfig) ->
         "iteration_count": iteration + 1,  # Increment after each evaluation
         "messages": [
             SystemMessage(
-                content=f"📊 Evaluation (iteration {iteration}): " f"{evaluation.evaluation_result}"
+                content=f"📊 Evaluation (iteration {iteration}): {evaluation.evaluation_result}"
             )
         ],
     }

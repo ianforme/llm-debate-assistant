@@ -175,7 +175,7 @@ def _render_outline_side(opening_statement_obj, outline_obj):
             if isinstance(defs, dict):
                 defs = [defs]
             for d in defs:
-                st.markdown(f"- **{_esc(_get(d,'keyword'))}** — {_esc(_get(d,'definition'))}")
+                st.markdown(f"- **{_esc(_get(d, 'keyword'))}** — {_esc(_get(d, 'definition'))}")
 
         # ## 比较标准
         st.markdown("### 1.2 比较标准")

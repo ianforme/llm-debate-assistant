@@ -47,7 +47,7 @@ async def generate_constructive_strategy(
     # Key Terms
     key_terms_section = "\n".join(
         f"""
-        **{i+1}. {term.term}**
+        **{i + 1}. {term.term}**
         - Def: {term.strategic_definition.definition}
         - Strategy: {term.strategic_definition.inclusion_exclusion}
         - Trap to Avoid: {term.opponents_trap}
@@ -58,7 +58,7 @@ async def generate_constructive_strategy(
     # Arguments (Rich Context for Selection)
     arguments_section = "\n".join(
         f"""
-        **[Candidate {i+1}] {arg.claim}**
+        **[Candidate {i + 1}] {arg.claim}**
         - Type: {arg.type}
         - Warrant: {arg.warrant[:300]}...
         - Impact: {arg.impact[:200]}...

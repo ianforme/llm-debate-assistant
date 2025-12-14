@@ -111,7 +111,7 @@ async def run_topic_research(topic: str, our_side: Literal["正方", "反方"]):
     else:
         console.print(
             Panel(
-                "[blue]🆕 No cache found[/blue]\n" "Will execute complete workflow from scratch.",
+                "[blue]🆕 No cache found[/blue]\nWill execute complete workflow from scratch.",
                 title="Cache Miss",
                 border_style="blue",
             )
@@ -303,7 +303,7 @@ async def run_topic_research(topic: str, our_side: Literal["正方", "反方"]):
 
         console.print("\n[bold green]✨ Research Complete![/bold green]")
         console.print(
-            "[dim]This research can now be used to inform " "opening statement creation.[/dim]"
+            "[dim]This research can now be used to inform opening statement creation.[/dim]"
         )
 
         # Show filesystem location

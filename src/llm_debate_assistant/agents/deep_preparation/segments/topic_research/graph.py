@@ -234,8 +234,7 @@ async def sanity_check_node(state: TopicResearchState, config: RunnableConfig) -
     # Max retries check - force approve to prevent infinite loop
     if current_retries >= 3:
         logger.error(
-            "Max retries (3) reached for topic research. "
-            "Proceeding with potentially weak research."
+            "Max retries (3) reached for topic research. Proceeding with potentially weak research."
         )
         return {"_sanity_check_result": "approve"}
 
@@ -251,7 +250,7 @@ async def sanity_check_node(state: TopicResearchState, config: RunnableConfig) -
 
     if len(our_res.arguments) < 3:
         logger.warning(
-            f"Only {len(our_res.arguments)} arguments found (need 3). " "Retrying research phase."
+            f"Only {len(our_res.arguments)} arguments found (need 3). Retrying research phase."
         )
         return {
             "research_retries": current_retries + 1,
@@ -267,8 +266,7 @@ async def sanity_check_node(state: TopicResearchState, config: RunnableConfig) -
             # Logic: if we can't even get a 10-character summary,
             # this argument might be fabricated or unsearchable
             logger.warning(
-                f"Argument '{arg.claim[:30]}...' has no backing evidence. "
-                "Retrying research phase."
+                f"Argument '{arg.claim[:30]}...' has no backing evidence. Retrying research phase."
             )
             return {
                 "research_retries": current_retries + 1,

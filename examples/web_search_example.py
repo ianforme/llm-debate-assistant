@@ -118,7 +118,7 @@ async def display_batch_search_example():
 
     console.print(
         f"\n[bold]⏱️  Total time: {elapsed_time:.2f}s | "
-        f"Average per query: {elapsed_time/len(queries):.2f}s[/bold]"
+        f"Average per query: {elapsed_time / len(queries):.2f}s[/bold]"
     )
 
     # Display results for each query

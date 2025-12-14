@@ -89,7 +89,7 @@ def display_messages(messages: list, max_display: int = 10):
         if tool_calls:
             tool_names = [tc.get("name", "?") for tc in tool_calls]
             console.print(
-                f"{emoji} [{color}]{label}[/{color}]: " f"[dim]Calling tools: {tool_names}[/dim]"
+                f"{emoji} [{color}]{label}[/{color}]: [dim]Calling tools: {tool_names}[/dim]"
             )
         elif preview.strip():
             console.print(f"{emoji} [{color}]{label}[/{color}]: {preview}")

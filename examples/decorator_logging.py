@@ -50,7 +50,7 @@ def main():
 
     print("\n" + "=" * 70)
     print("✅ Debate outline generated successfully!")
-    print("📊 Check your Opik dashboard for logged traces under " "'llm-debate-assistant' project!")
+    print("📊 Check your Opik dashboard for logged traces under 'llm-debate-assistant' project!")
 
     return outline
 

@@ -102,7 +102,7 @@ async def draft_constructive_speech(
             )
 
             evidence_section += f"""
-            **[Source ID Group {i+1}] 用于支持论点 {arg_strat.order}**
+            **[Source ID Group {i + 1}] 用于支持论点 {arg_strat.order}**
             【数据弹药】:
             {stats_text}
             【实证案例】:

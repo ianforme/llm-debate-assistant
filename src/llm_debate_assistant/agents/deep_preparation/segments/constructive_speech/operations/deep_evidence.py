@@ -50,7 +50,7 @@ async def deep_evidence_search(
     final_evidence_list: List[ArgumentEvidence] = []
 
     for i, arg in enumerate(selected_arguments):
-        logger.info(f"--- Processing Arg {i+1}: {arg.claim[:30]}... ---")
+        logger.info(f"--- Processing Arg {i + 1}: {arg.claim[:30]}... ---")
 
         # ---------------------------------------------------------
         # Step 1: Planning
@@ -102,7 +102,7 @@ async def deep_evidence_search(
             valid_result_count += 1
 
         if valid_result_count == 0:
-            logger.warning(f"  No valid search results found for Arg {i+1}")
+            logger.warning(f"  No valid search results found for Arg {i + 1}")
             final_evidence_list.append(_create_empty_evidence(arg.claim))
             continue
 
@@ -120,7 +120,7 @@ async def deep_evidence_search(
         try:
             cleaned_data = await synthesizer.ainvoke(synthesis_prompt, config)
         except Exception as e:
-            logger.error(f"Synthesis failed for Arg {i+1}: {e}")
+            logger.error(f"Synthesis failed for Arg {i + 1}: {e}")
             final_evidence_list.append(_create_empty_evidence(arg.claim))
             continue
 

@@ -61,7 +61,7 @@ async def critique_constructive_speech(
     evidence_checklist = "无可用深度证据"
     if deep_evidence:
         evidence_checklist = chr(10).join(
-            f"- For Arg {i+1} ({ev.argument_claim[:15]}...):\n"
+            f"- For Arg {i + 1} ({ev.argument_claim[:15]}...):\n"
             f"  Expected Stats: {len(ev.statistics)} items\n"
             f"  Expected Cases: {len(ev.case_studies)} items"
             for i, ev in enumerate(deep_evidence)

@@ -196,7 +196,7 @@ async def main():
             console.print(f"  Key Terms: {', '.join(t.term for t in strategy.selected_key_terms)}")
             console.print(f"  Arguments: {len(strategy.selected_arguments)}")
             for i, arg in enumerate(sorted(strategy.selected_arguments, key=lambda x: x.order)):
-                console.print(f"    {i+1}. {arg.role}: {arg.claim[:60]}...")
+                console.print(f"    {i + 1}. {arg.role}: {arg.claim[:60]}...")
             console.print(f"  Speech Tone: {strategy.speech_tone}")
             console.print(f"  Value Premise: {strategy.value_premise[:80]}...")
 

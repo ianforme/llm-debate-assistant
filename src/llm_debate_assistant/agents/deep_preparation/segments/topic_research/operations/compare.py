@@ -46,8 +46,7 @@ async def comparative_analysis(
 
     # Format value framework
     our_value_framework_str = (
-        f"价值框架: {our_research.value_framework}\n"
-        f"比较标准: {our_research.comparison_standard}"
+        f"价值框架: {our_research.value_framework}\n比较标准: {our_research.comparison_standard}"
     )
 
     # Assuming the global prompt manager is already initialized
