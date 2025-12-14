@@ -139,7 +139,7 @@ def manage_filesystem(
     if not filesystem:
         raise ValueError(
             "No filesystem in state. Initialize filesystem first using "
-            "create_filesystem() or initialize_filesystem_node()"
+            "create_filesystem()"
         )
 
     if action == "write":

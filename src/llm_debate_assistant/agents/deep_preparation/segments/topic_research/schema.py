@@ -25,12 +25,18 @@ class KeyTerm(BaseModel):
     """Strategic definition of a key term in the debate topic."""
 
     term: str = Field(description="The key concept to define")
-    standard_definition: str = Field(description="Academic or commonly accepted definition")
+    standard_definition: str = Field(
+        description="Academic or commonly accepted definition"
+    )
     strategic_definition: StrategicDefinition = Field(
         description="Our strategic framing with authority and scope"
     )
-    opponents_trap: str = Field(description="Predicted opponent's definition trap and its harm")
-    burden_shift: str = Field(description="How burden of proof shifts with our definition")
+    opponents_trap: str = Field(
+        description="Predicted opponent's definition trap and its harm"
+    )
+    burden_shift: str = Field(
+        description="How burden of proof shifts with our definition"
+    )
 
 
 class ArgumentDraft(BaseModel):
@@ -78,7 +84,9 @@ class PerspectiveResearch(BaseModel):
         description="3-5 core claims that form the foundation of this side"
     )
     arguments: List[Argument] = Field(description="Detailed arguments with evidence")
-    value_framework: str = Field(description="Underlying value system (e.g., freedom vs security)")
+    value_framework: str = Field(
+        description="Underlying value system (e.g., freedom vs security)"
+    )
     comparison_standard: str = Field(
         description="How this side measures success/evaluates the debate"
     )
@@ -121,7 +129,9 @@ class StrategicRecommendation(BaseModel):
 class ComparativeAnalysis(BaseModel):
     """Full strategic analysis output."""
 
-    key_clashes: List[KeyClash] = Field(description="3-4 points where arguments directly conflict")
+    key_clashes: List[KeyClash] = Field(
+        description="3-4 points where arguments directly conflict"
+    )
     our_advantages: List[StrategicPoint] = Field(
         description="3 strongest cards we hold (leverage points)"
     )
@@ -146,14 +156,20 @@ class CoreArgument(BaseModel):
         description="Type of the argument: Principle/Value based or Consequence/Practicality based."
     )
     claim: str = Field(description="The core claim statement (one concise sentence).")
-    warrant: str = Field(description="The logical reasoning behind the claim (The 'Why').")
-    impact: str = Field(description="The ultimate significance or benefit (The 'So What').")
+    warrant: str = Field(
+        description="The logical reasoning behind the claim (The 'Why')."
+    )
+    impact: str = Field(
+        description="The ultimate significance or benefit (The 'So What')."
+    )
 
 
 class CoreClaimsOutput(BaseModel):
     """Output container for core claims with full argument structure."""
 
-    claims: List[CoreArgument] = Field(description="List of 3-5 distinct core arguments.")
+    claims: List[CoreArgument] = Field(
+        description="List of 3-5 distinct core arguments."
+    )
 
 
 class CoreClaimsList(BaseModel):
@@ -187,10 +203,14 @@ class TopicResearchResult(BaseModel):
     """Complete output from topic research agent."""
 
     topic: str = Field(description="The debate topic")
-    our_side: Literal["正方", "反方"] = Field(description="Which side we are arguing for")
+    our_side: Literal["正方", "反方"] = Field(
+        description="Which side we are arguing for"
+    )
     key_terms: List[KeyTerm] = Field(description="Strategic definitions of key terms")
     our_research: PerspectiveResearch = Field(description="Research for our side")
-    opponent_research: PerspectiveResearch = Field(description="Research for opponent's side")
+    opponent_research: PerspectiveResearch = Field(
+        description="Research for opponent's side"
+    )
     analysis: ComparativeAnalysis = Field(description="Comparative strategic analysis")
 
     def to_context_dict(self) -> Dict[str, Any]:

@@ -83,7 +83,8 @@ async def main():
         )
         return
 
-    console.print(f"[green]✓ Found research session: {research_session}[/green]")
+    relative_research_path = Path(research_session).relative_to(Path.cwd())
+    console.print(f"[green]✓ Found research session: {relative_research_path}[/green]")
 
     # Create or find constructive_speech session
     console.print("\n[dim]Searching for existing constructive_speech session...[/dim]")

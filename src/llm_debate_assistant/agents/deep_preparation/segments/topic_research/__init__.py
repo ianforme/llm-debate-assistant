@@ -4,9 +4,6 @@ Topic research module for deep preparation agent.
 This module provides strategic research capabilities for debate topics.
 """
 
-from llm_debate_assistant.agents.deep_preparation.segments.topic_research.agent import (
-    TopicResearchAgent,
-)
 from llm_debate_assistant.agents.deep_preparation.segments.topic_research.schema import (
     TopicResearchResult,
     KeyTerm,
@@ -25,7 +22,6 @@ from llm_debate_assistant.agents.deep_preparation.segments.topic_research.graph 
 )
 
 __all__ = [
-    "TopicResearchAgent",
     "TopicResearchResult",
     "KeyTerm",
     "Argument",

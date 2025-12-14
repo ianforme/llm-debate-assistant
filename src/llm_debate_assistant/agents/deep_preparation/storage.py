@@ -23,10 +23,10 @@ def save_session_metadata(
     """Save session metadata for cache lookup.
 
     Args:
-        filesystem: Filesystem instance to save metadata to
-        topic: Debate topic
-        side: Our side (正方 or 反方)
-        segment: Which segment this session is for (e.g., "topic_research")
+        filesystem (Filesystem): Filesystem instance to save metadata to
+        topic (str): Debate topic
+        side (Literal["正方", "反方"]): Our side (正方 or 反方)
+        segment (str): Which segment this session is for (e.g., "topic_research")
     """
     metadata = {
         "topic": topic,
@@ -49,10 +49,10 @@ def find_session_by_topic(
     given topic, side, and segment. Returns the most recent match.
 
     Args:
-        topic: Debate topic to search for
-        side: Side to search for (正方 or 反方)
-        segment: Segment type (default: "topic_research")
-        root_dir: Root directory for sessions (default: .temp/debate_preparation_sessions)
+        topic (str): Debate topic to search for
+        side (Literal["正方", "反方"]): Side to search for (正方 or 反方)
+        segment (str): Segment type (default: "topic_research")
+        root_dir (Optional[Path]): Root directory for sessions (default: .temp/debate_preparation_sessions)
 
     Returns:
         Optional[str]: Session ID of most recent match, or None if not found
@@ -109,12 +109,12 @@ def create_filesystem(
     matching those criteria and reuse it if use_cache=True.
 
     Args:
-        filesystem_type: Type of filesystem to create ("virtual" or "disk")
-        session_id: Optional session ID (only used for disk filesystem)
-        topic: Optional debate topic (for cache lookup)
-        side: Optional side (正方 or 反方, for cache lookup)
-        segment: Segment type (default: "topic_research")
-        use_cache: Whether to search for and reuse existing sessions
+        filesystem_type (Literal["virtual", "disk"]): Type of filesystem to create ("virtual" or "disk")
+        session_id (Optional[str]): Optional session ID (only used for disk filesystem)
+        topic (Optional[str]): Optional debate topic (for cache lookup)
+        side (Optional[Literal["正方", "反方"]]): Optional side (正方 or 反方, for cache lookup)
+        segment (str): Segment type (default: "topic_research")
+        use_cache (bool): Whether to search for and reuse existing sessions
 
     Returns:
         tuple[Filesystem, Optional[str], bool]: Tuple of (filesystem instance,
@@ -136,164 +136,6 @@ def create_filesystem(
         return fs, fs.get_session_path(), cache_found
     else:
         raise ValueError(f"Unknown filesystem_type: {filesystem_type}")
-
-
-def initialize_filesystem_node(
-    state: DeepPrepState,
-    filesystem_type: Literal["virtual", "disk"] = "disk",
-    session_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    """Initialize filesystem in state if not already present.
-
-    This node should be called at the start of the graph to ensure
-    the filesystem is available for all nodes.
-
-    Args:
-        state (DeepPrepState): Deep preparation agent state
-        filesystem_type (Literal["virtual", "disk"]): Type of filesystem
-            ("virtual" for in-memory, "disk" for persistent)
-        session_id (Optional[str]): Optional session ID (only used for disk
-            filesystem)
-
-    Returns:
-        Dict[str, Any]: Dict with filesystem and path information if
-            initialized, else empty
-    """
-    if state.get("filesystem") is None:
-        filesystem, session_path, _ = create_filesystem(filesystem_type, session_id)
-        return {
-            "filesystem": filesystem,
-            "filesystem_path": session_path,
-        }
-
-    return {}
-
-
-# Alias for backwards compatibility
-initialize_filesystem_middleware = initialize_filesystem_node
-
-
-# ======================================================================
-# Context offloading functions for filesystem-based deep preparation
-# ======================================================================
-
-
-def save_outline_to_filesystem(state: DeepPrepState) -> Dict[str, Any]:
-    """Save outline to filesystem after creation.
-
-    Args:
-        state (DeepPrepState): Deep preparation agent state
-
-    Returns:
-        Dict[str, Any]: Dictionary with updated filesystem
-        information if saved, else empty
-    """
-    outline = state.get("outline")
-    if outline is None:
-        return {}
-
-    filesystem = state.get("filesystem")
-    if not filesystem:
-        return {}
-
-    import json
-
-    # Save structured JSON (for loading in nodes)
-    filesystem.write("/outline.json", json.dumps(outline, ensure_ascii=False))
-
-    # Also save human-readable markdown
-    content_parts = ["# Debate Outline\n"]
-    content_parts.append(f"Topic: {state['topic']}")
-    content_parts.append(f"Side: {state['side']}\n")
-
-    content_parts.append("## Keyword Definitions")
-    for kw in outline.get("keyword_definitions", []):
-        content_parts.append(f"- **{kw['keyword']}**: {kw['definition']}")
-
-    content_parts.append("\n## Comparison Standard")
-    standard = outline.get("comparison_standard", {})
-    content_parts.append(f"{standard.get('standard', '')}")
-    content_parts.append(f"Justification: {standard.get('justification', '')}")
-
-    content_parts.append("\n## Arguments")
-    for i, arg in enumerate(outline.get("arguments", []), 1):
-        content_parts.append(f"\n### Argument {i}")
-        content_parts.append(f"**Claim**: {arg.get('claim', '')}")
-        content_parts.append(f"**Warrant**: {arg.get('warrant', '')}")
-
-    filesystem.write("/outline.md", "\n".join(content_parts))
-
-    # Clear outline from state to save tokens - it's now on disk
-    return {"outline": None}
-
-
-def save_evidence_to_filesystem(state: DeepPrepState) -> Dict[str, Any]:
-    """Save evidence to filesystem after search.
-
-    Args:
-        state (DeepPrepState): Deep preparation agent state
-
-    Returns:
-        Dict[str, Any]: Dictionary with updated filesystem
-        information if saved, else empty
-    """
-    evidence_data = state.get("evidence_data")
-    if evidence_data:
-        for i, evidence in enumerate(evidence_data, 1):
-            content_parts = [f"# Evidence for Argument {i}\n"]
-            content_parts.append(f"**Argument**: {evidence.get('argument', '')}")
-            content_parts.append(f"**Warrant**: {evidence.get('warrant', '')}\n")
-
-            content_parts.append("## Search Results")
-            for source in evidence.get("search_results", []):
-                content_parts.append(
-                    f"- [{source.get('title', 'Source')}]({source.get('uri', '')})"
-                )
-
-            content_parts.append("\n## Analysis")
-            content_parts.append(evidence.get("analysis", ""))
-
-            content = "\n".join(content_parts)
-
-            filesystem = state.get("filesystem")
-            if filesystem:
-                filesystem.write(f"/evidence/argument_{i}.md", content)
-
-        # Clear evidence_data from state to save tokens - it's now on disk
-        if state.get("filesystem"):
-            return {"evidence_data": None}
-
-        return {}
-
-    return {}
-
-
-def save_draft_to_filesystem(state: DeepPrepState) -> Dict[str, Any]:
-    """Save draft to filesystem after creation.
-
-    Args:
-        state (DeepPrepState): Deep preparation agent state with draft
-
-    Returns:
-        Dict[str, Any]: Dictionary with updated filesystem
-        information if saved, else empty
-    """
-    draft = state.get("draft")
-    if not draft:
-        return {}
-
-    iteration = state.get("iteration_count", 1)
-
-    filesystem = state.get("filesystem")
-    if not filesystem:
-        return {}
-
-    # Save as versioned draft
-    filesystem.write(f"/drafts/draft_v{iteration}.md", draft)
-    # Also save as current draft
-    filesystem.write("/current_draft.md", draft)
-    # Clear draft from state to save tokens - it's now on disk
-    return {"draft": None}
 
 
 def save_final_state_to_filesystem(state: DeepPrepState) -> Dict[str, Any]:

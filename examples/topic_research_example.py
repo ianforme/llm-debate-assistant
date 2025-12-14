@@ -13,6 +13,7 @@ import asyncio
 import opik
 import time
 import logging
+from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table
@@ -72,7 +73,8 @@ async def run_topic_research(topic: str, our_side: str):
         console.print("[blue]⚡ Creating new session[/blue]")
 
     if session_path:
-        console.print(f"[dim]Session path: {session_path}[/dim]")
+        relative_path = Path(session_path).relative_to(Path.cwd())
+        console.print(f"[dim]Session path: {relative_path}[/dim]")
 
     # Check for existing cache/progress
     console.print("\n[bold cyan]📦 Checking for cached/partial research...[/bold cyan]")
@@ -305,7 +307,8 @@ async def run_topic_research(topic: str, our_side: str):
 
         # Show filesystem location
         if session_path:
-            research_path = f"{session_path}/research/"
+            relative_path = Path(session_path).relative_to(Path.cwd())
+            research_path = f"{relative_path}/research/"
             console.print(f"\n[cyan]📁 Research saved to:[/cyan] [dim]{research_path}[/dim]")
             console.print("[dim]Files saved:[/dim]")
             console.print("  - research.json (structured data)")

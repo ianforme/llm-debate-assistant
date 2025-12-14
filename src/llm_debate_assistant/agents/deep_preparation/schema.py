@@ -1,55 +1,50 @@
-from typing import Annotated, Any, Optional, Union
-
+from typing import Annotated, List, TypedDict, Dict, Any, Literal, Optional
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
-from typing_extensions import TypedDict
 
-from llm_debate_assistant.services.disk_filesystem import DiskFilesystem
-from llm_debate_assistant.services.virtual_filesystem import VirtualFilesystem
-
-# Type alias for either filesystem implementation
-Filesystem = Union[VirtualFilesystem, DiskFilesystem]
+from llm_debate_assistant.services.filesystem_protocol import FilesystemProtocol
+from llm_debate_assistant.services.manage_todo_list import TodoList
 
 
-class DeepPrepState(TypedDict):
-    """State for deep preparation agent with filesystem support.
+# Type alias for filesystem (can be DiskFilesystem or VirtualFilesystem)
+Filesystem = FilesystemProtocol
 
-    This state extends the debate preparation workflow with filesystem
-    for managing research notes, outlines, drafts, and other intermediate
-    work products.
+# Preparation mode: "lite" = topic_research only, "full" = all segments
+PrepMode = Literal["lite", "full"]
 
-    Supports both:
-    - VirtualFilesystem: In-memory, transient storage
-    - DiskFilesystem: Persistent storage in
-        .temp/debate_preparation_sessions/<session_id>/
+
+class DeepPrepState(TypedDict, total=False):
+    """
+    Orchestrator State: Only holds Metadata, Pointers, and Chat History.
+    NO HEAVY CONTENT.
+
+    Note: total=False allows optional fields for incremental state updates.
+    Required fields should be set during initialization.
     """
 
-    # Input parameters
+    # --- 1. Global Context ---
     topic: str
-    side: str
+    side: Literal["正方", "反方"]
+    session_id: str
+    mode: PrepMode  # "lite" or "full"
 
-    # Filesystem (VirtualFilesystem or DiskFilesystem)
-    filesystem: Optional[Filesystem]
-    filesystem_path: Optional[str]  # Path to session directory (DiskFilesystem only)
+    # --- 2. Memory (The "Brain") ---
+    # Stores the interaction history between Agent and Tools.
+    # Tools only return short messages like "Success: saved to /path/..." rather than full content.
+    messages: Annotated[List[BaseMessage], add_messages]
 
-    # Workflow outputs (structured)
-    # Note: These are typically offloaded to filesystem and cleared from state
-    outline: Optional[dict[str, Any]]
-    evidence_data: Optional[list[dict[str, Any]]]
-    draft: Optional[str]
-    evaluation: Optional[dict[str, Any]]
+    # --- 3. Status Board (The "Dashboard") ---
+    # Used for UI progress display, or to help the Agent quickly decide the next step.
+    # e.g., {"topic_research": "completed", "constructive_speech": "not_started"}
+    # Note: This requires a Reducer or dedicated Node to update it.
+    stage_status: Annotated[Dict[str, str], lambda x, y: {**x, **y}]
 
-    # Task planning and tracking (for agent-driven workflow)
-    todos: Optional[list[dict[str, Any]]]
+    # --- 4. Artifact Registry (The "File Explorer") ---
+    # Only store paths! Only store paths! Only store paths!
+    # e.g., {"research_json": "/research/research.json", "final_draft": "/speech/final.md"}
+    artifact_paths: Annotated[Dict[str, str], lambda x, y: {**x, **y}]
 
-    # Control flow
-    iteration_count: int
-    max_iterations: int
-    next_action: Optional[str]
-    # "auto" | "redo_outline" | "redo_evidence" | "redo_draft"
-
-    # Debug/logging options
-    verbose: Optional[bool]  # Enable verbose logging (message stats, etc.)
-
-    # Message history for LangGraph
-    messages: Annotated[list[BaseMessage], add_messages]
+    # --- 5. Task Management ---
+    # TodoList instance for tracking preparation progress
+    # Managed via the update_todo tool
+    todo_list: Optional[TodoList]

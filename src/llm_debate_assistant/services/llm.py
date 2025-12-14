@@ -11,7 +11,7 @@ from llm_debate_assistant.config import app_config
 # Default models for each provider
 # TODO: better model management strategy
 DEFAULT_GEMINI_MODEL = "gemini-3-pro-preview"
-DEFAULT_OPENAI_MODEL = "gpt-5.1-2025-11-13"
+DEFAULT_OPENAI_MODEL = "gpt-5.2-2025-12-11"
 
 
 def get_llm(
