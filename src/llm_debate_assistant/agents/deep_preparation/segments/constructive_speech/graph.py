@@ -29,9 +29,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 
-async def load_research_node(
-    state: ConstructiveState, config: RunnableConfig
-) -> Dict[str, Any]:
+async def load_research_node(state: ConstructiveState, config: RunnableConfig) -> Dict[str, Any]:
     """Load topic_research results (node wrapper).
 
     Args:
@@ -68,10 +66,13 @@ async def generate_strategy_node(
     filesystem = config.get("configurable", {}).get("filesystem")
     assert filesystem is not None, "Filesystem is required"
 
+    research_context = state["research_context"]
+    assert research_context is not None, "Research context is required"
+
     strategy = await generate_constructive_strategy(
         topic=state["topic"],
         side=state["side"],
-        research=state["research_context"],
+        research=research_context,
     )
 
     # Save strategy to filesystem
@@ -83,9 +84,7 @@ async def generate_strategy_node(
     return {"constructive_strategy": strategy}
 
 
-async def deep_evidence_node(
-    state: ConstructiveState, config: RunnableConfig
-) -> Dict[str, Any]:
+async def deep_evidence_node(state: ConstructiveState, config: RunnableConfig) -> Dict[str, Any]:
     """Perform deep evidence search (node wrapper).
 
     Args:
@@ -118,9 +117,7 @@ async def deep_evidence_node(
     return {"deep_evidence": evidence_list}
 
 
-async def draft_node(
-    state: ConstructiveState, config: RunnableConfig
-) -> Dict[str, Any]:
+async def draft_node(state: ConstructiveState, config: RunnableConfig) -> Dict[str, Any]:
     """Draft the constructive speech (node wrapper).
 
     Args:
@@ -137,12 +134,13 @@ async def draft_node(
     assert strategy is not None, "Strategy is required"
 
     iteration = state.get("iteration_count", 0)
+    deep_evidence = state.get("deep_evidence") or []
 
     draft_text = await draft_constructive_speech(
         topic=state["topic"],
         side=state["side"],
         strategy=strategy,
-        deep_evidence=state.get("deep_evidence", []),
+        deep_evidence=deep_evidence,
         iteration=iteration,
         critique=state.get("critique"),
     )
@@ -154,9 +152,7 @@ async def draft_node(
     return {"draft_content": draft_text, "iteration_count": iteration + 1}
 
 
-async def critique_node(
-    state: ConstructiveState, config: RunnableConfig
-) -> Dict[str, Any]:
+async def critique_node(state: ConstructiveState, config: RunnableConfig) -> Dict[str, Any]:
     """Critique the constructive speech (node wrapper).
 
     Args:
@@ -172,12 +168,14 @@ async def critique_node(
     assert draft is not None, "Draft is required"
     assert strategy is not None, "Strategy is required"
 
+    deep_evidence = state.get("deep_evidence") or []
+
     critique_result = await critique_constructive_speech(
         topic=state["topic"],
         side=state["side"],
         draft=draft,
         strategy=strategy,
-        deep_evidence=state.get("deep_evidence", []),
+        deep_evidence=deep_evidence,
     )
 
     return {"critique": critique_result}
@@ -246,11 +244,7 @@ async def finalize_constructive_speech_node(
 
     filesystem.write("/constructive_speech/final_speech.md", draft)
 
-    final_status = (
-        "approved"
-        if critique and critique.decision == "pass"
-        else "max_retries_reached"
-    )
+    final_status = "approved" if critique and critique.decision == "pass" else "max_retries_reached"
     final_score = critique.score if critique else 0
 
     metadata = {
@@ -260,9 +254,7 @@ async def finalize_constructive_speech_node(
         "strategy_summary": {
             "tone": strategy.speech_tone if strategy else "N/A",
             "value_premise": strategy.value_premise if strategy else "N/A",
-            "arguments": (
-                [arg.claim for arg in strategy.selected_arguments] if strategy else []
-            ),
+            "arguments": ([arg.claim for arg in strategy.selected_arguments] if strategy else []),
         },
         "outstanding_issues": (
             critique.critical_issues if critique and final_status != "approved" else []
@@ -274,9 +266,7 @@ async def finalize_constructive_speech_node(
         json.dumps(metadata, indent=2, ensure_ascii=False),
     )
 
-    logger.info(
-        f"Artifacts saved. Final Score: {final_score}/10. Status: {final_status}"
-    )
+    logger.info(f"Artifacts saved. Final Score: {final_score}/10. Status: {final_status}")
 
     return {
         "final_speech_content": draft,
@@ -329,3 +319,28 @@ def create_constructive_graph() -> StateGraph:
     workflow.add_edge("finalize_constructive_speech", END)
 
     return workflow
+
+
+if __name__ == "__main__":
+    """Generate and save graph visualization."""
+    import os
+
+    # Create and compile workflow
+    workflow = create_constructive_graph()
+    app = workflow.compile()
+
+    # Generate PNG visualization
+    output_path = os.path.join(
+        os.path.dirname(__file__),
+        "../../../../../../asset/constructive_speech_graph.png",
+    )
+
+    # Ensure asset directory exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # Draw and save
+    png_data = app.get_graph(xray=True).draw_mermaid_png()
+    with open(output_path, "wb") as f:
+        f.write(png_data)
+
+    print(f"Graph visualization saved to: {output_path}")

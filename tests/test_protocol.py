@@ -29,9 +29,7 @@ class TestProtocolCompliance:
     def test_has_required_methods(self, cls):
         """Test that filesystem classes have all required methods."""
         for method_name in REQUIRED_METHODS:
-            assert hasattr(
-                cls, method_name
-            ), f"{cls.__name__} missing method: {method_name}"
+            assert hasattr(cls, method_name), f"{cls.__name__} missing method: {method_name}"
             assert callable(
                 getattr(cls, method_name)
             ), f"{cls.__name__}.{method_name} is not callable"

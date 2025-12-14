@@ -104,9 +104,7 @@ class AgentConfig(BaseModel):
     # Model-specific configurations
     google_realtime: GoogleRealtimeConfig = Field(default_factory=GoogleRealtimeConfig)
     openai_realtime: OpenAIRealtimeConfig = Field(default_factory=OpenAIRealtimeConfig)
-    standard_pipeline: StandardPipelineConfig = Field(
-        default_factory=StandardPipelineConfig
-    )
+    standard_pipeline: StandardPipelineConfig = Field(default_factory=StandardPipelineConfig)
 
     # Debate-specific configuration (optional, set at runtime)
     debate: Optional[DebateConfig] = Field(

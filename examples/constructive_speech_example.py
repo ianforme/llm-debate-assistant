@@ -104,14 +104,12 @@ async def main():
             if draft_result.get("success"):
                 draft_content = draft_result["content"]
                 visible_chars = count_visible_chars(draft_content)
+                total_chars = len(draft_content)
                 console.print(
-                    f"\n[cyan]Existing final speech found ({visible_chars} visible chars, {len(draft_content)} total)[/cyan]"
+                    f"\n[cyan]Existing final speech found "
+                    f"({visible_chars} visible chars, {total_chars} total)[/cyan]"
                 )
-                preview = (
-                    draft_content[:200] + "..."
-                    if len(draft_content) > 200
-                    else draft_content
-                )
+                preview = draft_content[:200] + "..." if len(draft_content) > 200 else draft_content
                 console.print(Panel(preview, title="Preview", border_style="cyan"))
 
                 user_input = input("\nRegenerate constructive speech? (y/N): ")
@@ -152,9 +150,7 @@ async def main():
     }
 
     # Run the workflow
-    console.print(
-        "\n[bold green]Running constructive speech generation...[/bold green]"
-    )
+    console.print("\n[bold green]Running constructive speech generation...[/bold green]")
     console.print("[dim](This will take 2-3 minutes for deep evidence search)[/dim]\n")
 
     start_time = time.time()
@@ -187,7 +183,8 @@ async def main():
         console.print("\n" + "=" * 80)
         console.print(
             Panel.fit(
-                f"[bold green]✓ Constructive Speech Generated in {execution_time:.1f}s[/bold green]",
+                f"[bold green]✓ Constructive Speech Generated in "
+                f"{execution_time:.1f}s[/bold green]",
                 border_style="green",
             )
         )
@@ -195,14 +192,10 @@ async def main():
         # Strategy
         strategy = final_state.get("constructive_strategy")
         if strategy:
-            console.print(f"\n[bold cyan]Strategic Blueprint:[/bold cyan]")
-            console.print(
-                f"  Key Terms: {', '.join(t.term for t in strategy.selected_key_terms)}"
-            )
+            console.print("\n[bold cyan]Strategic Blueprint:[/bold cyan]")
+            console.print(f"  Key Terms: {', '.join(t.term for t in strategy.selected_key_terms)}")
             console.print(f"  Arguments: {len(strategy.selected_arguments)}")
-            for i, arg in enumerate(
-                sorted(strategy.selected_arguments, key=lambda x: x.order)
-            ):
+            for i, arg in enumerate(sorted(strategy.selected_arguments, key=lambda x: x.order)):
                 console.print(f"    {i+1}. {arg.role}: {arg.claim[:60]}...")
             console.print(f"  Speech Tone: {strategy.speech_tone}")
             console.print(f"  Value Premise: {strategy.value_premise[:80]}...")
@@ -213,7 +206,7 @@ async def main():
             total_sources = sum(len(ev.sources) for ev in evidence)
             total_stats = sum(len(ev.statistics) for ev in evidence)
             total_quotes = sum(len(ev.best_quotes) for ev in evidence)
-            console.print(f"\n[bold cyan]Evidence Gathered:[/bold cyan]")
+            console.print("\n[bold cyan]Evidence Gathered:[/bold cyan]")
             console.print(f"  Total Sources: {total_sources}")
             console.print(f"  Statistics: {total_stats}")
             console.print(f"  Quotes: {total_quotes}")
@@ -223,32 +216,32 @@ async def main():
         critique = final_state.get("critique")
         if critique:
             result_color = "green" if critique.decision == "pass" else "yellow"
-            console.print(f"\n[bold cyan]Final Critique:[/bold cyan]")
+            console.print("\n[bold cyan]Final Critique:[/bold cyan]")
             console.print(
                 f"  Decision: [{result_color}]{critique.decision.upper()}[/{result_color}]"
             )
             console.print(f"  Score: {critique.score}/10")
             console.print(f"  Iterations: {final_state['iteration_count']}")
             if critique.decision != "pass" and critique.critical_issues:
-                console.print(f"  Outstanding Issues:")
+                console.print("  Outstanding Issues:")
                 for issue in critique.critical_issues[:3]:
                     console.print(f"    - {issue}")
 
         # Draft
-        draft = final_state.get("final_speech_content") or final_state.get(
-            "draft_content"
-        )
+        draft = final_state.get("final_speech_content") or final_state.get("draft_content")
         if draft:
             visible_chars = count_visible_chars(draft)
+            total_chars = len(draft)
             console.print(
-                f"\n[bold cyan]Constructive Speech ({visible_chars} visible chars, {len(draft)} total):[/bold cyan]"
+                f"\n[bold cyan]Constructive Speech "
+                f"({visible_chars} visible chars, {total_chars} total):[/bold cyan]"
             )
             console.print(Panel(draft, title="Final Speech", border_style="green"))
 
         # Metadata
         metadata = final_state.get("final_metadata")
         if metadata:
-            console.print(f"\n[bold cyan]Generation Metadata:[/bold cyan]")
+            console.print("\n[bold cyan]Generation Metadata:[/bold cyan]")
             console.print(f"  Status: {metadata.get('status')}")
             console.print(f"  Final Score: {metadata.get('final_score')}/10")
             console.print(f"  Total Iterations: {metadata.get('iterations')}")

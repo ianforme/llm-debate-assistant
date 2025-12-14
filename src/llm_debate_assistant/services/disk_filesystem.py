@@ -22,9 +22,7 @@ class DiskFilesystem:
     persist after the process ends.
     """
 
-    def __init__(
-        self, root_dir: Optional[Path] = None, session_id: Optional[str] = None
-    ):
+    def __init__(self, root_dir: Optional[Path] = None, session_id: Optional[str] = None):
         """Initialize disk filesystem.
 
         Args:

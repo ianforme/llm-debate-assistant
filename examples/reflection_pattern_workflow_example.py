@@ -80,8 +80,7 @@ async def main():
 
     logger.info("🎉 Workflow completed successfully!")
     logger.info(
-        f"⏱️  Total execution time: {elapsed_time:.2f} seconds "
-        f"({elapsed_time/60:.2f} minutes)"
+        f"⏱️  Total execution time: {elapsed_time:.2f} seconds " f"({elapsed_time/60:.2f} minutes)"
     )
 
     # Log complete state for debugging
@@ -105,12 +104,9 @@ async def main():
     # Show results
     console.print("\n[green]✅ Workflow completed![/green]")
     console.print(
-        f"[bold]⏱️  Execution time:[/bold] {elapsed_time:.2f}s "
-        f"({elapsed_time/60:.2f}min)"
+        f"[bold]⏱️  Execution time:[/bold] {elapsed_time:.2f}s " f"({elapsed_time/60:.2f}min)"
     )
-    console.print(
-        f"\n[bold]Evaluation:[/bold] {result['evaluation']['evaluation_result']}"
-    )
+    console.print(f"\n[bold]Evaluation:[/bold] {result['evaluation']['evaluation_result']}")
     console.print(f"[bold]Iterations:[/bold] {result['iteration_count']}")
     console.print(f"[bold]Word count:[/bold] {len(result['draft'])} characters")
 
@@ -129,9 +125,7 @@ async def main():
 
     # Show evidence info
     if result.get("evidence_data"):
-        total_sources = sum(
-            len(ev.get("search_results", [])) for ev in result["evidence_data"]
-        )
+        total_sources = sum(len(ev.get("search_results", [])) for ev in result["evidence_data"])
         logger.info(f"\n🔍 Evidence: {total_sources} sources gathered")
         console.print(f"\n[bold]Evidence:[/bold] {total_sources} sources gathered")
 

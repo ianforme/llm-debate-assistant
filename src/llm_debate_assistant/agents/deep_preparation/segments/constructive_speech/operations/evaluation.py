@@ -88,9 +88,7 @@ async def critique_constructive_speech(
     critique = await structured_llm.ainvoke(prompt)
 
     # Handle Result & Logging
-    logger.info(
-        f"Critique Decision: {critique.decision.upper()} (Score: {critique.score})"
-    )
+    logger.info(f"Critique Decision: {critique.decision.upper()} (Score: {critique.score})")
 
     if critique.decision == "needs_revision":
         logger.info(f"Issues: {critique.critical_issues}")

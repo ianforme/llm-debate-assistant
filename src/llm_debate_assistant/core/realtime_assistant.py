@@ -88,9 +88,7 @@ class RealtimeAssistant:
             audio_chunk = bytes(self.audio_buffer[:bytes_needed])
             self.audio_buffer = self.audio_buffer[bytes_needed:]
         else:
-            audio_chunk = bytes(self.audio_buffer) + b"\x00" * (
-                bytes_needed - current_buffer_size
-            )
+            audio_chunk = bytes(self.audio_buffer) + b"\x00" * (bytes_needed - current_buffer_size)
             self.audio_buffer.clear()
 
         return (audio_chunk, pyaudio.paContinue)
@@ -106,12 +104,8 @@ class RealtimeAssistant:
                         self.user_session_total_time <= user_time_in_seconds
                     ):
                         message = ws.recv()
-                        if (
-                            not message
-                        ):  # Handle empty message (EOF or connection close)
-                            print(
-                                "🔵 Received empty message (possibly EOF or WebSocket closing)."
-                            )
+                        if not message:  # Handle empty message (EOF or connection close)
+                            print("🔵 Received empty message (possibly EOF or WebSocket closing).")
                             break
 
                         # Now handle valid JSON messages only
@@ -134,18 +128,14 @@ class RealtimeAssistant:
                             # print(f'🔵 Received {len(audio_content)} bytes, total buffer size: {len(self.audio_buffer)}')
 
                         elif event_type == "input_audio_buffer.speech_started":
-                            print(
-                                "🔵 Speech started, clearing buffer and stopping playback."
-                            )
+                            print("🔵 Speech started, clearing buffer and stopping playback.")
                             self.clear_audio_buffer()
                             self.stop_audio_playback()
                             self.user_session_start_time = time.time()
 
                         elif event_type == "input_audio_buffer.speech_stopped":
                             self.create_responses_with_speech_history(ws, instruction)
-                            speech_time = round(
-                                time.time() - self.user_session_start_time, 0
-                            )
+                            speech_time = round(time.time() - self.user_session_start_time, 0)
                             self.user_session_total_time += speech_time
                             print(
                                 f"🔵 Speech stopped, creating new responses; Speech time: {speech_time} seconds; Total time: {self.user_session_total_time}"
@@ -154,20 +144,13 @@ class RealtimeAssistant:
                         elif event_type == "response.audio.done":
                             print("🔵 AI finished speaking.")
 
-                        elif (
-                            event_type
-                            == "conversation.item.input_audio_transcription.completed"
-                        ):
+                        elif event_type == "conversation.item.input_audio_transcription.completed":
                             print(f"User Input: {message['transcript']}")
-                            self.human_speeches.append(
-                                "用户:\n" + message["transcript"]
-                            )
+                            self.human_speeches.append("用户:\n" + message["transcript"])
 
                         elif event_type == "response.audio_transcript.done":
                             print(f"AI output: {message['transcript']}")
-                            self.assistant_speeches.append(
-                                "AI助手:\n" + message["transcript"]
-                            )
+                            self.assistant_speeches.append("AI助手:\n" + message["transcript"])
                     else:
                         print("Total user time is up. Exiting..")
                         break
@@ -205,9 +188,7 @@ class RealtimeAssistant:
     def create_responses_with_speech_history(self, ws, context_instruction):
         # assume assistant starts first
         speech_history = [
-            x
-            for pair in zip(self.assistant_speeches, self.human_speeches)
-            for x in pair
+            x for pair in zip(self.assistant_speeches, self.human_speeches) for x in pair
         ]
         response_create = {
             "type": "response.create",
@@ -303,9 +284,7 @@ class RealtimeAssistant:
             )
             receive_thread.start()
 
-            mic_thread = threading.Thread(
-                target=self.send_mic_audio_to_websocket, args=(ws,)
-            )
+            mic_thread = threading.Thread(target=self.send_mic_audio_to_websocket, args=(ws,))
             mic_thread.start()
 
             # Wait for stop_event to be set
@@ -355,9 +334,7 @@ class RealtimeAssistant:
             mic_stream.start_stream()
             speaker_stream.start_stream()
 
-            self.connect_to_openai(
-                instruction, user_time_in_seconds, ai_start_first=ai_start_first
-            )
+            self.connect_to_openai(instruction, user_time_in_seconds, ai_start_first=ai_start_first)
 
         except KeyboardInterrupt:
             print("Gracefully shutting down...")
@@ -366,9 +343,7 @@ class RealtimeAssistant:
         finally:
             # get the conversation history as output
             convo_history = [
-                x
-                for pair in zip(self.assistant_speeches, self.human_speeches)
-                for x in pair
+                x for pair in zip(self.assistant_speeches, self.human_speeches) for x in pair
             ]
             mic_stream.stop_stream()
             mic_stream.close()

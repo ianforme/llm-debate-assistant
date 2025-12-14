@@ -13,4 +13,4 @@ Available segments:
 - closing: Closing statement preparation
 """
 
-__all__ = []
+__all__: list[str] = []

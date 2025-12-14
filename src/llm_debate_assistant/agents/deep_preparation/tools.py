@@ -22,8 +22,6 @@ from llm_debate_assistant.agents.deep_preparation.segments.constructive_speech i
 )
 from llm_debate_assistant.services.manage_todo_list import (
     manage_todo_list,
-    TodoList,
-    TaskStatus,
 )
 
 logger = logging.getLogger(__name__)

@@ -74,7 +74,7 @@ async def draft_constructive_speech(
 
     for i, arg_strat in enumerate(sorted_args):
         # Ensure we don't go out of bounds if deep_evidence is missing items
-        arg_ev: ArgumentEvidence = deep_evidence[i] if i < len(deep_evidence) else None
+        arg_ev: ArgumentEvidence | None = deep_evidence[i] if i < len(deep_evidence) else None
 
         arguments_section += f"""
         **论点 {arg_strat.order}: {arg_strat.claim}**
@@ -112,9 +112,7 @@ async def draft_constructive_speech(
             ------------------------------------------------
             """
         else:
-            evidence_section += (
-                f"**论点 {arg_strat.order}**: 未找到强力证据，请侧重纯逻辑推演。\n"
-            )
+            evidence_section += f"**论点 {arg_strat.order}**: 未找到强力证据，请侧重纯逻辑推演。\n"
 
     # C. Feedback Integration (Iterative Refinement)
     improvement_instruction = ""
@@ -166,9 +164,7 @@ async def draft_constructive_speech(
     TARGET_CHARS_RANGE = "1100-1150"
 
     if current_chars > MAX_ALLOWED_CHARS:
-        logger.warning(
-            f"⚠️ Draft too long ({current_chars} chars). Activating Refiner..."
-        )
+        logger.warning(f"⚠️ Draft too long ({current_chars} chars). Activating Refiner...")
 
         # Use Gemini Flash for fast, cost-effective rewriting
         # Note: You can also use "openai" if preferred, but Flash is great for this.
@@ -195,7 +191,7 @@ async def draft_constructive_speech(
 
         # Original Draft
         {draft_text}
-        
+
         # Output
         直接输出修改后的正文，不要包含任何前言或说明。
         """
@@ -219,9 +215,7 @@ async def draft_constructive_speech(
             }
         )
 
-        logger.info(
-            f"✂️ Pruning complete. New length: {count_visible_chars(refined_text)}"
-        )
+        logger.info(f"✂️ Pruning complete. New length: {count_visible_chars(refined_text)}")
         draft_text = refined_text
     else:
         logger.info(f"✅ Length within limits ({current_chars} chars).")

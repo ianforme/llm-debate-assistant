@@ -14,6 +14,7 @@ import opik
 import time
 import logging
 from pathlib import Path
+from typing import Literal
 
 from rich.console import Console
 from rich.table import Table
@@ -46,7 +47,7 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-async def run_topic_research(topic: str, our_side: str):
+async def run_topic_research(topic: str, our_side: Literal["正方", "反方"]):
     """Run topic research and display results.
 
     Args:

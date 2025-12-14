@@ -68,9 +68,7 @@ async def generate_constructive_strategy(
     )
 
     # Analysis Sections
-    strategic_recs = "\n".join(
-        f"- {rec}" for rec in research.analysis.strategic_recommendations
-    )
+    strategic_recs = "\n".join(f"- {rec}" for rec in research.analysis.strategic_recommendations)
     our_advs = "\n".join(f"- {a}" for a in research.analysis.our_advantages)
     opp_vulns = "\n".join(f"- {v}" for v in research.analysis.opponent_vulnerabilities)
 

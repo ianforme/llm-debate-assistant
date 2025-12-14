@@ -138,8 +138,7 @@ def manage_filesystem(
 
     if not filesystem:
         raise ValueError(
-            "No filesystem in state. Initialize filesystem first using "
-            "create_filesystem()"
+            "No filesystem in state. Initialize filesystem first using " "create_filesystem()"
         )
 
     if action == "write":
@@ -239,9 +238,7 @@ def write_file(state: Dict[str, Any], path: str, content: str) -> Dict[str, Any]
     return manage_filesystem("write", state, path=path, content=content)
 
 
-def read_file(
-    state: Dict[str, Any], path: str, lines: Optional[int] = None
-) -> Dict[str, Any]:
+def read_file(state: Dict[str, Any], path: str, lines: Optional[int] = None) -> Dict[str, Any]:
     """Convenience function to read a file.
 
     Args:
@@ -268,9 +265,7 @@ def list_directory(state: Dict[str, Any], directory: str = "/") -> Dict[str, Any
     return manage_filesystem("ls", state, directory=directory)
 
 
-def edit_file(
-    state: Dict[str, Any], path: str, old_text: str, new_text: str
-) -> Dict[str, Any]:
+def edit_file(state: Dict[str, Any], path: str, old_text: str, new_text: str) -> Dict[str, Any]:
     """Convenience function to edit a file.
 
     Args:
@@ -282,9 +277,7 @@ def edit_file(
     Returns:
         Result dict from manage_filesystem
     """
-    return manage_filesystem(
-        "edit", state, path=path, old_text=old_text, new_text=new_text
-    )
+    return manage_filesystem("edit", state, path=path, old_text=old_text, new_text=new_text)
 
 
 def delete_file(state: Dict[str, Any], path: str) -> Dict[str, Any]:

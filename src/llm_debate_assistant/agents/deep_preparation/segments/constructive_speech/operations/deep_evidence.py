@@ -42,9 +42,7 @@ async def deep_evidence_search(
     Returns:
         List[ArgumentEvidence]: Evidence for each argument.
     """
-    logger.info(
-        f"🔍 Starting Deep Evidence Search for {len(selected_arguments)} arguments..."
-    )
+    logger.info(f"🔍 Starting Deep Evidence Search for {len(selected_arguments)} arguments...")
 
     llm = get_llm(provider="openai", temperature=0.1)
     pm = get_prompt_manager()
@@ -73,9 +71,7 @@ async def deep_evidence_search(
         # ---------------------------------------------------------
         # Step 2: Execution (Web Search)
         # ---------------------------------------------------------
-        raw_results = await search_queries(
-            search_plan.queries, model="gemini-2.5-flash"
-        )
+        raw_results = await search_queries(search_plan.queries, model="gemini-2.5-flash")
 
         source_map: Dict[int, EvidenceSource] = {}
         formatted_context = ""
@@ -131,9 +127,9 @@ async def deep_evidence_search(
         # ---------------------------------------------------------
         # Step 4: Assembly
         # ---------------------------------------------------------
-        stats = []
-        quotes = []
-        cases = []
+        stats: list[dict] = []
+        quotes: list[dict] = []
+        cases: list[dict] = []
         used_sources_ids = set()
 
         def process_items(items, target_list):
@@ -152,9 +148,7 @@ async def deep_evidence_search(
 
         final_sources = [source_map[sid] for sid in sorted(used_sources_ids)]
 
-        logger.info(
-            f"  Extracted: {len(stats)} stats, {len(quotes)} quotes, {len(cases)} cases"
-        )
+        logger.info(f"  Extracted: {len(stats)} stats, {len(quotes)} quotes, {len(cases)} cases")
 
         final_evidence_list.append(
             ArgumentEvidence(

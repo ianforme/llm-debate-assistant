@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, cast
@@ -7,6 +8,8 @@ from llm_debate_assistant.services.disk_filesystem import DiskFilesystem
 from llm_debate_assistant.services.virtual_filesystem import VirtualFilesystem
 
 from .schema import DeepPrepState, Filesystem
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -150,9 +153,11 @@ def save_final_state_to_filesystem(state: DeepPrepState) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Empty dict (doesn't modify state)
     """
-    filesystem = state.get("filesystem")
-    if not filesystem:
+    filesystem_obj = state.get("filesystem")
+    if not filesystem_obj:
         return {}
+
+    filesystem = cast(Filesystem, filesystem_obj)
 
     # Serialize state, handling non-serializable objects
     serializable_state: Dict[str, Any] = {}
@@ -220,9 +225,10 @@ def save_final_state_to_filesystem(state: DeepPrepState) -> Dict[str, Any]:
     }
 
     # Save as JSON (full state for reference)
-    filesystem.write(
+    result = filesystem.write(
         "/final_state.json",
         json.dumps(serializable_state, ensure_ascii=False, indent=2),
     )
+    logger.debug(f"Saved final state: {result.get('success', False)}")
 
     return {}

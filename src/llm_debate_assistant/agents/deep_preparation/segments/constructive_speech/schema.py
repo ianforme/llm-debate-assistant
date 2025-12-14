@@ -33,16 +33,12 @@ class SelectedArgument(BaseModel):
     claim: str
     warrant: str
     impact: str
-    evidence_summary: str = Field(
-        description="A brief summary of the key evidence to include."
-    )
+    evidence_summary: str = Field(description="A brief summary of the key evidence to include.")
     order: int = Field(description="Position in the speech: 1, 2, or 3.")
     role: Literal["The Hook", "The Pivot", "The Anchor"] = Field(
         description="Strategic role: 'The Hook' (Strongest/Intuitive), 'The Pivot' (Pre-emptive/Strategic), 'The Anchor' (Value/Deep)."
     )
-    rationale: str = Field(
-        description="Why this argument was selected and placed in this order."
-    )
+    rationale: str = Field(description="Why this argument was selected and placed in this order.")
 
 
 class ConstructiveStrategy(BaseModel):
@@ -56,9 +52,7 @@ class ConstructiveStrategy(BaseModel):
         description="Exactly 3 arguments, ordered strategically."
     )
 
-    value_premise: str = Field(
-        description="The overarching moral/philosophical theme of the case."
-    )
+    value_premise: str = Field(description="The overarching moral/philosophical theme of the case.")
     comparison_standard: str = Field(
         description="The criterion for judging the round (e.g., 'Net Benefits', 'Rights Protection')."
     )
@@ -136,9 +130,7 @@ class CritiqueResult(BaseModel):
         description="Whether the draft passes or needs revision"
     )
 
-    strategy_compliance: str = Field(
-        description="Comment on Hook/Pivot/Anchor execution"
-    )
+    strategy_compliance: str = Field(description="Comment on Hook/Pivot/Anchor execution")
     evidence_usage: str = Field(
         description="Comment on whether specific provided evidence was used"
     )

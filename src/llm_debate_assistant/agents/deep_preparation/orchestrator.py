@@ -212,11 +212,7 @@ def get_system_prompt(mode: PrepMode) -> str:
     pm = get_prompt_manager()
 
     # Determine which prompt to load
-    prompt_name = (
-        "DEEP_PREP_ORCHESTRATOR_LITE"
-        if mode == "lite"
-        else "DEEP_PREP_ORCHESTRATOR_FULL"
-    )
+    prompt_name = "DEEP_PREP_ORCHESTRATOR_LITE" if mode == "lite" else "DEEP_PREP_ORCHESTRATOR_FULL"
 
     try:
         # Load TODO instructions and mode-specific prompt from Opik
@@ -230,9 +226,7 @@ def get_system_prompt(mode: PrepMode) -> str:
         return composed_prompt
     except Exception as e:
         # Fallback to hardcoded prompts
-        logger.warning(
-            f"Failed to load {prompt_name} from Opik: {e}. Using hardcoded fallback."
-        )
+        logger.warning(f"Failed to load {prompt_name} from Opik: {e}. Using hardcoded fallback.")
         return LITE_SYSTEM_PROMPT if mode == "lite" else FULL_SYSTEM_PROMPT
 
 
@@ -277,7 +271,7 @@ def create_call_model_node(llm_with_tools, system_prompt: str):
 
 def create_orchestrator(
     mode: PrepMode = "full",
-    filesystem: Filesystem = None,
+    filesystem: Filesystem | None = None,
 ) -> StateGraph:
     """
     Create the deep preparation orchestrator graph.
@@ -308,7 +302,7 @@ def create_orchestrator(
 
     # State reference for tools to access/update state
     # This is a mutable dict that will be updated during execution
-    state_ref = {"state": {}}
+    state_ref: dict = {"state": {}}
 
     # Get tools for the specified mode
     tools = get_tools_for_mode(mode, filesystem, state_ref)
@@ -360,7 +354,7 @@ def create_initial_state(
     topic: str,
     side: Literal["正方", "反方"],
     mode: PrepMode = "lite",
-    session_id: str = None,
+    session_id: str | None = None,
 ) -> DeepPrepState:
     """
     Create initial state for the orchestrator.
@@ -458,3 +452,33 @@ async def run_preparation(
     logger.info("Preparation completed")
 
     return final_state
+
+
+if __name__ == "__main__":
+    """Generate and save graph visualization."""
+    import os
+    from llm_debate_assistant.agents.deep_preparation.storage import create_filesystem
+
+    # Create a dummy filesystem for visualization
+    filesystem, session_path, cache_found = create_filesystem(
+        topic="visualization", side="正方", segment="orchestrator"
+    )
+
+    # Create and compile workflow
+    workflow = create_orchestrator(mode="full", filesystem=filesystem)
+    app = workflow.compile()
+
+    # Generate PNG visualization
+    output_path = os.path.join(
+        os.path.dirname(__file__), "../../../../asset/deep_prep_agent_graph.png"
+    )
+
+    # Ensure asset directory exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # Draw and save
+    png_data = app.get_graph(xray=True).draw_mermaid_png()
+    with open(output_path, "wb") as f:
+        f.write(png_data)
+
+    print(f"Graph visualization saved to: {output_path}")

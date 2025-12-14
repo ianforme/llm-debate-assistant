@@ -18,9 +18,7 @@ class TaskStatus(str, Enum):
 class TodoItem:
     """A single todo item."""
 
-    def __init__(
-        self, id: str, description: str, status: TaskStatus = TaskStatus.PENDING
-    ):
+    def __init__(self, id: str, description: str, status: TaskStatus = TaskStatus.PENDING):
         self.id = id
         self.description = description
         self.status = status

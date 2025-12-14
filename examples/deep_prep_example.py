@@ -29,7 +29,6 @@ from rich.markdown import Markdown
 
 from llm_debate_assistant.core.initialization import init_app
 from llm_debate_assistant.agents.deep_preparation import (
-    run_preparation,
     create_orchestrator,
     create_initial_state,
     create_filesystem,
@@ -89,7 +88,9 @@ def display_messages(messages: list, max_display: int = 10):
         tool_calls = getattr(msg, "tool_calls", None)
         if tool_calls:
             tool_names = [tc.get("name", "?") for tc in tool_calls]
-            console.print(f"{emoji} [{color}]{label}[/{color}]: [dim]Calling tools: {tool_names}[/dim]")
+            console.print(
+                f"{emoji} [{color}]{label}[/{color}]: " f"[dim]Calling tools: {tool_names}[/dim]"
+            )
         elif preview.strip():
             console.print(f"{emoji} [{color}]{label}[/{color}]: {preview}")
         else:
@@ -161,9 +162,9 @@ async def run_example(
     )
 
     if cache_found:
-        console.print(f"[green]✓ Found existing session[/green]")
+        console.print("[green]✓ Found existing session[/green]")
     else:
-        console.print(f"[blue]⚡ Creating new session[/blue]")
+        console.print("[blue]⚡ Creating new session[/blue]")
 
     if session_path:
         relative_path = Path(session_path).relative_to(Path.cwd())
@@ -220,7 +221,8 @@ async def run_example(
                             console.print(f"[blue]🤖 Agent calling:[/blue] {', '.join(tools)}")
                         elif hasattr(last_msg, "content") and last_msg.content:
                             # Agent responding without tools (likely final response)
-                            preview = last_msg.content[:100] + "..." if len(last_msg.content) > 100 else last_msg.content
+                            content = last_msg.content
+                            preview = content[:100] + "..." if len(content) > 100 else content
                             console.print(f"[blue]�� Agent:[/blue] {preview}")
                 elif node_name == "tools":
                     # Tool execution completed
@@ -255,14 +257,16 @@ async def run_example(
         if final_state:
             # Stage status
             console.print("\n")
-            display_stage_status(final_state.get("stage_status", {}))
+            stage_status = final_state.get("stage_status", {})
+            display_stage_status(stage_status if isinstance(stage_status, dict) else {})
 
             # Artifact paths
-            display_artifact_paths(final_state.get("artifact_paths", {}))
+            artifact_paths = final_state.get("artifact_paths", {})
+            display_artifact_paths(artifact_paths if isinstance(artifact_paths, dict) else {})
 
             # Todo list summary (if available)
             todo_list = final_state.get("todo_list")
-            if todo_list:
+            if todo_list and hasattr(todo_list, "format_summary"):
                 console.print("\n[bold cyan]Final Todo List:[/bold cyan]")
                 console.print(todo_list.format_summary())
 
@@ -298,6 +302,7 @@ async def run_example(
         execution_time = time.time() - start_time
         console.print(f"\n[red]✗ Error after {execution_time:.1f}s: {e}[/red]")
         import traceback
+
         console.print(f"[red]{traceback.format_exc()}[/red]")
 
 

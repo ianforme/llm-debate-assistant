@@ -4,16 +4,14 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from llm_debate_assistant.prompts import opening_statement_prompts
 from llm_debate_assistant.services.llm import get_llm
-from llm_debate_assistant.services.web_search import search_multiple_arguments
+from llm_debate_assistant.services.web_search import search_multiple_arguments  # type: ignore[attr-defined]
 
 from .schema import DebateOutline, Evaluation, OpeningStatement
 from .state import DebateState
 
 
 # LLM call Node
-async def create_outline_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def create_outline_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Create debate outline with definitions, standards, and arguments.
 
     Args:
@@ -54,15 +52,11 @@ async def create_outline_node(
             "messages": [SystemMessage(content=message)],
         }
     except Exception as e:
-        raise RuntimeError(
-            f"Failed to create outline: {e}\n" f"Topic: {state['topic']}"
-        ) from e
+        raise RuntimeError(f"Failed to create outline: {e}\n" f"Topic: {state['topic']}") from e
 
 
 # Tool Node: Model has been pre-configured in the search function
-async def search_evidence_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def search_evidence_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Search for evidence supporting debate arguments.
 
     Args:
@@ -79,9 +73,7 @@ async def search_evidence_node(
     arguments = outline["arguments"]
 
     # Prepare search arguments
-    search_args = [
-        (arg["claim"], arg["warrant"], arg["evidence_needed"]) for arg in arguments
-    ]
+    search_args = [(arg["claim"], arg["warrant"], arg["evidence_needed"]) for arg in arguments]
 
     # Check if there's feedback from evaluation (when redoing evidence)
     feedback = None
@@ -124,9 +116,7 @@ async def search_evidence_node(
 
 
 # Another LLM call Node
-async def draft_statement_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def draft_statement_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Draft opening statement using evidence.
 
     Args:
@@ -147,12 +137,8 @@ async def draft_statement_node(
     for kw in outline["keyword_definitions"]:
         debate_outline_parts.append(f"- {kw['keyword']}: {kw['definition']}")
 
-    debate_outline_parts.append(
-        f"\n## 比较标准\n{outline['comparison_standard']['standard']}"
-    )
-    debate_outline_parts.append(
-        f"理由: {outline['comparison_standard']['justification']}\n"
-    )
+    debate_outline_parts.append(f"\n## 比较标准\n{outline['comparison_standard']['standard']}")
+    debate_outline_parts.append(f"理由: {outline['comparison_standard']['justification']}\n")
 
     debate_outline_parts.append("## 论点与证据\n")
 
@@ -199,9 +185,7 @@ async def draft_statement_node(
     }
 
 
-async def evaluate_statement_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def evaluate_statement_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Evaluate opening statement quality.
 
     Args:
@@ -222,9 +206,7 @@ async def evaluate_statement_node(
     for kw in outline["keyword_definitions"]:
         debate_outline_parts.append(f"- {kw['keyword']}: {kw['definition']}")
 
-    debate_outline_parts.append(
-        f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n"
-    )
+    debate_outline_parts.append(f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n")
 
     debate_outline_parts.append("## 论点框架")
     for i, arg in enumerate(outline["arguments"], 1):
@@ -277,16 +259,13 @@ async def evaluate_statement_node(
         "iteration_count": iteration + 1,  # Increment after each evaluation
         "messages": [
             SystemMessage(
-                content=f"📊 Evaluation (iteration {iteration}): "
-                f"{evaluation.evaluation_result}"
+                content=f"📊 Evaluation (iteration {iteration}): " f"{evaluation.evaluation_result}"
             )
         ],
     }
 
 
-async def improve_statement_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def improve_statement_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Improve opening statement based on evaluation feedback.
 
     Args:
@@ -312,9 +291,7 @@ async def improve_statement_node(
     for kw in outline["keyword_definitions"]:
         debate_outline_parts.append(f"- {kw['keyword']}: {kw['definition']}")
 
-    debate_outline_parts.append(
-        f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n"
-    )
+    debate_outline_parts.append(f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n")
 
     debate_outline_parts.append("## 论点与完整证据\n")
 
@@ -349,8 +326,6 @@ async def improve_statement_node(
     return {
         "draft": improved_draft.content,
         "messages": [
-            SystemMessage(
-                content=f"🔄 Improved draft ({improved_draft.word_count} words)"
-            )
+            SystemMessage(content=f"🔄 Improved draft ({improved_draft.word_count} words)")
         ],
     }

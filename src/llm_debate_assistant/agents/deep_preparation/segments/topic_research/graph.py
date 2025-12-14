@@ -24,8 +24,6 @@ from typing import Any, Dict, Literal, Optional, TypedDict
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, END
 
-logger = logging.getLogger(__name__)
-
 from llm_debate_assistant.agents.deep_preparation.segments.topic_research.schema import (
     KeyTerm,
     PerspectiveResearch,
@@ -49,6 +47,8 @@ from llm_debate_assistant.agents.deep_preparation.segments.topic_research.storag
     save_analysis_progress,
     load_research_progress,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -188,7 +188,7 @@ async def research_node(state: TopicResearchState, config: RunnableConfig) -> Di
     topic = state["topic"]
     our_side = state["side"]
     opponent_side: Literal["正方", "反方"] = "反方" if our_side == "正方" else "正方"
-    key_terms = state.get("key_terms", [])
+    key_terms = state.get("key_terms") or []
 
     # Research both sides in parallel
     our_research, opponent_research = await asyncio.gather(
@@ -198,12 +198,12 @@ async def research_node(state: TopicResearchState, config: RunnableConfig) -> Di
 
     # Save progress for resumability
     filesystem = config.get("configurable", {}).get("filesystem")
-    key_terms = state.get("key_terms")
-    if filesystem is not None and key_terms is not None:
+    key_terms_to_save = state.get("key_terms")
+    if filesystem is not None and key_terms_to_save is not None:
         save_research_progress(
             topic,
             our_side,
-            key_terms,
+            key_terms_to_save,
             our_research,
             opponent_research,
             filesystem,
@@ -378,7 +378,7 @@ def route_after_sanity_check(state: TopicResearchState) -> str:
         str: Next node to transition to ("approve" -> analysis, "reject" -> research)
     """
     result = state.get("_sanity_check_result", "approve")
-    return result
+    return str(result)
 
 
 def route_after_cache(state: TopicResearchState) -> str:
@@ -542,3 +542,27 @@ def create_initial_state(
         # Quality control
         "research_retries": 0,
     }
+
+
+if __name__ == "__main__":
+    """Generate and save graph visualization."""
+    import os
+
+    # Create and compile workflow
+    workflow = create_topic_research_graph()
+    app = workflow.compile()
+
+    # Generate PNG visualization
+    output_path = os.path.join(
+        os.path.dirname(__file__), "../../../../../../asset/topic_research_graph.png"
+    )
+
+    # Ensure asset directory exists
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    # Draw and save
+    png_data = app.get_graph(xray=True).draw_mermaid_png()
+    with open(output_path, "wb") as f:
+        f.write(png_data)
+
+    print(f"Graph visualization saved to: {output_path}")

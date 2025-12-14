@@ -44,9 +44,7 @@ def load_research(
         return research_context
 
     # 2. Fallback path: Standalone Mode (Load from disk)
-    logger.info(
-        f"Standalone Mode: Searching for topic_research for '{topic}' ({side})..."
-    )
+    logger.info(f"Standalone Mode: Searching for topic_research for '{topic}' ({side})...")
 
     research_session_id = find_session_by_topic(
         topic=topic,
