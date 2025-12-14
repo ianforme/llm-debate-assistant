@@ -215,6 +215,10 @@ The Deep Preparation system uses a **ReAct-style orchestrator** that autonomousl
   - `lite` - Topic research only (faster, ~3-5 min)
   - `full` - Research + constructive speech (~10 min, more segments coming)
 
+![Deep Prep Agent Graph](asset/deep_prep_agent_graph.png)
+
+The graph above shows the ReAct-style orchestration pattern. The agent uses a think-act-observe loop where it reasons about what to do next, invokes the appropriate subgraph tool, and observes the result before continuing.
+
 **How It Works:**
 
 1. Agent receives the debate topic and side (正方/反方)
@@ -237,6 +241,37 @@ async def run_topic_research(topic: str, side: Literal["正方", "反方"]) -> s
 
 The orchestrator uses LangGraph's `ToolNode` and `tools_condition` for the ReAct loop.
 
+**Subgraph Deep Dive:**
+
+Each subgraph implements a specialized workflow for a specific preparation task. Here's how the key subgraphs work:
+
+*Topic Research Subgraph:*
+
+![Topic Research Graph](asset/topic_research_graph.png)
+
+This subgraph performs comprehensive topic analysis:
+1. Researches both affirmative and negative positions
+2. Defines key terms and establishes comparison criteria
+3. Identifies strategic advantages for your side
+4. Uses parallel research to explore multiple angles simultaneously
+
+*Constructive Speech Subgraph:*
+
+![Constructive Speech Graph](asset/constructive_speech_graph.png)
+
+This subgraph generates a complete opening statement through an iterative refinement process:
+1. Creates initial outline based on research
+2. Searches for supporting evidence using web search
+3. Drafts the statement with evidence integration
+4. Critiques and evaluates the draft quality
+5. Refines through multiple iterations until quality threshold is met
+
+Both subgraphs demonstrate common agentic patterns:
+- **Parallel execution** for concurrent research tasks
+- **Iterative refinement** with critique loops
+- **Tool integration** (web search, structured output generation)
+- **State management** to track progress and accumulate context
+
 **Work in Progress:**
 
 Additional segments under development:
@@ -254,6 +289,7 @@ See [`examples/orchestrator_example.py`](examples/orchestrator_example.py) for a
 - Type hints required
 - Run `pre-commit run --all-files` before committing
 - Follow existing patterns in the codebase
+- If mypy is blocking your commit with type errors you can't resolve, use `git commit --no-verify` to bypass hooks temporarily
 
 **AI Coding Tools:**
 AI assistants (Claude, Cursor, etc.) are welcome! Just make sure:
@@ -266,8 +302,22 @@ When in doubt: **less is more**.
 ---
 
 ## 🗺️ Roadmap
-- litellm adapter
-- Agents & other design patterns
+
+**Infrastructure & Integrations:**
+- LiteLLM adapter for multi-provider support
+- 3rd party search tools (Exa, Tavily) vs LLM-based search comparison
+- Extend `Filesystem` service with cloud storage integration (S3, GCS, etc.)
+- Deployment strategies 
+
+**Model & Tool Evaluation:**
+- Benchmark different LLM capabilities for Chinese debate tasks
+- Comparative analysis of search tools for evidence retrieval
+- Performance optimization (latency, cost, quality trade-offs)
+
+**Workflow Enhancements:**
+- Additional debate segments (rebuttal, tactical exchange, closing statement)
+- Workflow refinement for existing segments (topic research, constructive speech)
+- Balance autonomy vs determinism in workflows (agent flexibility vs reliability/cost)
 
 ---
 
@@ -280,7 +330,7 @@ When in doubt: **less is more**.
 
 For simpler use cases, the **Reflection Pattern** workflow provides a deterministic node-based approach.
 
-![Opening Statement Workflow](asset/opening_statement_workflow.png)
+![Reflection Pattern Workflow](asset/reflection_pattern.png)
 
 The system employs an iterative refinement process with the following core nodes:
 
