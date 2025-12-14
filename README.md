@@ -198,6 +198,49 @@ How to use traces/spans for evaluation:
 
 ![Opik Logging Example](asset/logging_example.png)
 
+### Prompt Management
+
+This project uses [Opik's Prompt Library](https://www.comet.com/docs/opik/tracing/log_traces#logging-prompts) for centralized prompt management and versioning. Prompts are stored in Opik and loaded at runtime via the `PromptManager` service.
+
+**Benefits:**
+- **Version Control**: Track prompt changes and rollback if needed
+- **Collaboration**: Share prompts across team members via Opik UI
+- **Experimentation**: A/B test different prompt variations
+- **Hot Updates**: Update prompts without redeploying code
+
+**How it works:**
+
+1. **Initialize the prompt manager** with Opik client:
+
+```python
+import opik
+from llm_debate_assistant.services.prompt_manager import get_prompt_manager
+
+client = opik.Opik()
+pm = get_prompt_manager()
+await pm.init(client)  # Loads prompts from Opik into cache
+```
+
+2. **Use prompts in your operations** (example from [define_terms.py](src/llm_debate_assistant/agents/deep_preparation/segments/topic_research/operations/define_terms.py)):
+
+```python
+pm = get_prompt_manager()
+prompt = pm.get("KEY_TERMS_PROMPT").format(topic=topic, side=our_side)
+
+llm = get_llm(temperature=0.3)
+result = await llm.ainvoke(prompt, config)
+```
+
+**Managed prompts** (from [prompts.py](src/llm_debate_assistant/agents/deep_preparation/segments/topic_research/prompts.py)):
+- `KEY_TERMS_PROMPT` - Strategic term definitions aligned with debate side
+- `CORE_CLAIMS_PROMPT` - Core argument claims analysis
+- `ARGUMENT_DEVELOPMENT_PROMPT` - Argument construction framework
+- `VALUE_ADVOCACY_PROMPT` - Value-based advocacy reasoning
+- `COMPARATIVE_ANALYSIS_PROMPT` - Cross-side comparison
+- `EVIDENCE_EXTRACTION_PROMPT` - Evidence retrieval and analysis
+
+The `PromptManager` caches prompts in memory after loading from Opik, providing fast access during runtime while maintaining centralized version control.
+
 ---
 
 ### Deep Preparation Agent
@@ -299,6 +342,18 @@ AI assistants (Claude, Cursor, etc.) are welcome! Just make sure:
 
 When in doubt: **less is more**.
 
+**Model-Specific Best Practices:**
+- **Gemini Models**: Use the LCEL chain pattern `prompt | llm | parser` instead of `.with_structured_output()` to prevent serialization errors
+  ```python
+  # ✅ Recommended for Gemini
+  chain = prompt | llm | parser
+  result = await chain.ainvoke(input)
+
+  # ❌ Avoid - may cause errors with Gemini
+  structured_llm = llm.with_structured_output(Schema)
+  result = await structured_llm.ainvoke(input)
+  ```
+
 ---
 
 ## 🗺️ Roadmap
@@ -307,7 +362,7 @@ When in doubt: **less is more**.
 - LiteLLM adapter for multi-provider support
 - 3rd party search tools (Exa, Tavily) vs LLM-based search comparison
 - Extend `Filesystem` service with cloud storage integration (S3, GCS, etc.)
-- Deployment strategies 
+- Deployment strategies
 
 **Model & Tool Evaluation:**
 - Benchmark different LLM capabilities for Chinese debate tasks
