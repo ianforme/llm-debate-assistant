@@ -48,8 +48,6 @@ class Evaluation(BaseModel):
 
     evaluation_result: Literal["pass", "fail"]
     feedback: str = Field(description="详细反馈")
-    next_action: (
-        Literal["redo_outline", "redo_evidence", "redo_draft", "improve"] | None
-    ) = Field(
+    next_action: Literal["redo_outline", "redo_evidence", "redo_draft", "improve"] | None = Field(
         default=None, description="下一步行动（仅当evaluation_result为fail时需要）"
     )

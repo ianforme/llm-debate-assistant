@@ -1,3 +1,8 @@
+# flake8: noqa: E501
+# ruff: noqa: E501
+# This file contains long Chinese text examples that should not be line-wrapped
+
+
 def generate_style_card(style, example_speech):
     return f"""
 【语言风格】

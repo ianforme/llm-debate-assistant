@@ -30,7 +30,7 @@ from llm_debate_assistant.prompts.opening_statement_prompts import (
 )
 from llm_debate_assistant.prompts.rebuttal_prompts import rebuttal_statement_prompt
 from llm_debate_assistant.prompts.summary_prompt import match_summary_prompt
-from llm_debate_assistant.utils.helpers import rewrite_style
+from llm_debate_assistant.helpers.helpers import rewrite_style
 
 
 class DebateAssistant:
@@ -42,7 +42,7 @@ class DebateAssistant:
         self,
         input_prompt: str,
         structured_output: Optional[Any] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any,
     ):
         """
         A generic method to interact with the LLM client.
@@ -66,9 +66,7 @@ class DebateAssistant:
             )
             return response.output_text
 
-    def generate_conclusion(
-        self, debate_history, topic, side, debate_outline, style_example
-    ):
+    def generate_conclusion(self, debate_history, topic, side, debate_outline, style_example):
         res = self._generate(
             conclusion_prompts(debate_history, topic, side, debate_outline),
             reasoning={"effort": "low"},
@@ -90,9 +88,7 @@ class DebateAssistant:
     def search_for_evidence(
         self, argument: str, warrant: str, evidence_needed: str, topic: str, side: str
     ):
-        print(
-            f"资料搜寻 - 论点: {argument}\n论证: {warrant}\n所需资料: {evidence_needed}"
-        )
+        print(f"资料搜寻 - 论点: {argument}\n论证: {warrant}\n所需资料: {evidence_needed}")
         print("~" * 50)
         data = self._generate(
             example_card_prompt(argument, warrant, evidence_needed, topic, side),
@@ -102,9 +98,7 @@ class DebateAssistant:
         )
         return data["evidences"]
 
-    def initial_opening_statement(
-        self, debate_outline: Dict[str, Any], topic: str, side: str
-    ):
+    def initial_opening_statement(self, debate_outline: Dict[str, Any], topic: str, side: str):
         print(f"生成立论初稿 - {topic}： {side}")
         print("*" * 50)
         return self._generate(
@@ -139,19 +133,13 @@ class DebateAssistant:
             text={"verbosity": "medium"},
         )
 
-    def generate_rebuttal_statement(
-        self, topic, side, match_history, debate_outline, minutes
-    ):
+    def generate_rebuttal_statement(self, topic, side, match_history, debate_outline, minutes):
         return self._generate(
-            rebuttal_statement_prompt(
-                topic, side, match_history, debate_outline, minutes
-            ),
+            rebuttal_statement_prompt(topic, side, match_history, debate_outline, minutes),
             reasoning={"effort": "medium"},
         )
 
-    def sequential_fetch_evidences(
-        self, debate_outline: Dict[str, Any], topic: str, side: str
-    ):
+    def sequential_fetch_evidences(self, debate_outline: Dict[str, Any], topic: str, side: str):
         results = []
         for arg_card in debate_outline["arguments"]:
             argument = arg_card["argument"]
@@ -161,17 +149,13 @@ class DebateAssistant:
                 (
                     argument,
                     warrant,
-                    self.search_for_evidence(
-                        argument, warrant, evidence_needed, topic, side
-                    ),
+                    self.search_for_evidence(argument, warrant, evidence_needed, topic, side),
                 )
             )
 
-        arguments = []
+        arguments: list[Dict[str, Any]] = []
         for argument, warrant, evidences in results:
-            if (len(arguments) == 0) or (
-                argument not in [arg["argument"] for arg in arguments]
-            ):
+            if (len(arguments) == 0) or (argument not in [arg["argument"] for arg in arguments]):
                 new_arg = {
                     "argument": argument,
                     "warrant": warrant,
@@ -186,9 +170,7 @@ class DebateAssistant:
         debate_outline["arguments"] = arguments
         return debate_outline
 
-    async def parallel_fetch_evidences(
-        self, debate_outline: Dict[str, Any], topic: str, side: str
-    ):
+    async def parallel_fetch_evidences(self, debate_outline: Dict[str, Any], topic: str, side: str):
         # default we have 3 arguments per opening statement, each argument will take one thread
         sema = asyncio.Semaphore(3)
         tasks = []
@@ -198,9 +180,7 @@ class DebateAssistant:
                 return (
                     argument,
                     warrant,
-                    await asyncio.to_thread(
-                        func, argument, warrant, evidence_needed, topic, side
-                    ),
+                    await asyncio.to_thread(func, argument, warrant, evidence_needed, topic, side),
                 )
 
         for arg_card in debate_outline["arguments"]:
@@ -221,11 +201,9 @@ class DebateAssistant:
             )
         results = await asyncio.gather(*tasks)
 
-        arguments = []
+        arguments: list[Dict[str, Any]] = []
         for argument, warrant, evidences in results:
-            if (len(arguments) == 0) or (
-                argument not in [arg["argument"] for arg in arguments]
-            ):
+            if (len(arguments) == 0) or (argument not in [arg["argument"] for arg in arguments]):
                 new_arg = {
                     "argument": argument,
                     "warrant": warrant,
@@ -252,22 +230,16 @@ class DebateAssistant:
             instructions=opening_statement_improver_prompt(debate_outline, topic, side),
             output_type=OpeningStatement,
             model=self.model,
-            model_settings=ModelSettings(
-                reasoning=Reasoning(effort="medium"), verbosity="high"
-            ),
+            model_settings=ModelSettings(reasoning=Reasoning(effort="medium"), verbosity="high"),
             tools=[WebSearchTool()],
         )
 
         opening_statement_evaluator = Agent(
             name="opening_statement_evaluator",
-            instructions=opening_statement_evaluator_prompt(
-                debate_outline, topic, side
-            ),
+            instructions=opening_statement_evaluator_prompt(debate_outline, topic, side),
             output_type=OpeningStatementEvaluationFeedback,
             model=self.model,
-            model_settings=ModelSettings(
-                reasoning=Reasoning(effort="medium"), verbosity="low"
-            ),
+            model_settings=ModelSettings(reasoning=Reasoning(effort="medium"), verbosity="low"),
         )
 
         input_items = [
@@ -278,17 +250,13 @@ class DebateAssistant:
         ]
         counter = 1
 
-        with trace(
-            f"LLM as a judge-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-        ):
+        with trace(f"LLM as a judge-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"):
             while True:
                 if counter == 5:
                     break
 
                 print("=" * 20 + f"Iter {counter}" + "=" * 20)
-                evaluator_result = await Runner.run(
-                    opening_statement_evaluator, input_items
-                )
+                evaluator_result = await Runner.run(opening_statement_evaluator, input_items)
                 result = evaluator_result.final_output
 
                 print(f"立论审核结果: {result.evaluation_result}")
@@ -302,17 +270,11 @@ class DebateAssistant:
                 print("\n")
 
                 print("基于反馈重新生成立论...")
-                input_items.append(
-                    {"content": f"Feedback: {result.feedback}", "role": "user"}
-                )
+                input_items.append({"content": f"Feedback: {result.feedback}", "role": "user"})
                 print("\n")
 
-                enhanced_opening_statement = await Runner.run(
-                    opening_statement_writer, input_items
-                )
-                print(
-                    f"最新立论:\n\n {enhanced_opening_statement.final_output.opening_statement}"
-                )
+                enhanced_opening_statement = await Runner.run(opening_statement_writer, input_items)
+                print(f"最新立论:\n\n {enhanced_opening_statement.final_output.opening_statement}")
                 input_items.append(
                     {
                         "content": f"opening statement to be evaluated: {enhanced_opening_statement.final_output.opening_statement}",

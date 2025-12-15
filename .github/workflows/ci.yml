@@ -43,7 +43,16 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Run pre-commit hooks
-        run: poetry run pre-commit run --all-files
+        run: poetry run pre-commit run --all-files --verbose
+
+      - name: Show modified files (if any)
+        if: failure()
+        run: |
+          echo "Files modified by pre-commit:"
+          git diff --name-only
+          echo "---"
+          echo "Detailed diff:"
+          git diff
 
       - name: Test package import
         run: poetry run python -c "import llm_debate_assistant; print('✅ Package imported successfully')"

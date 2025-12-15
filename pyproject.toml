@@ -15,11 +15,11 @@ dependencies = [
     "streamlit",
     "python-dotenv",
     "ipykernel (>=6.30.1,<7.0.0)",
-    "black (>=25.9.0,<26.0.0)",
-    "isort (>=6.1.0,<7.0.0)",
     "ruff (>=0.8.0,<1.0.0)",
     "docformatter (>=1.7.7,<2.0.0)",
     "pre-commit (>=4.3.0,<5.0.0)",
+    "mypy (>=1.13.0,<2.0.0)",
+    "detect-secrets (>=1.5.0,<2.0.0)",
     "rich (>=14.1.0,<15.0.0)",
     "litellm (<=1.77.1)",
     "pysocks",
@@ -40,7 +40,9 @@ dependencies = [
     "livekit-plugins-google (>=1.2.18,<2.0.0)",
     "livekit-plugins-turn-detector (>=1.2.18,<2.0.0)",
     "livekit-plugins-silero (>=1.2.18,<2.0.0)",
-    "livekit-plugins-cartesia (>=1.2.18,<2.0.0)"
+    "livekit-plugins-cartesia (>=1.2.18,<2.0.0)",
+    "tiktoken (>=0.12.0,<0.13.0)",
+    "torch (>=2.9.1,<3.0.0) ; python_version < \"3.15\""
 ]
 
 [project.optional-dependencies]
@@ -49,9 +51,12 @@ audio = [
     "sounddevice"
 ]
 
-[tool.isort]
-profile = "black"
-line_length = 88
+[tool.mypy]
+python_version = "3.11"
+
+[[tool.mypy.overrides]]
+module = "llm_debate_assistant.services"
+ignore_errors = true
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

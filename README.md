@@ -14,8 +14,10 @@ This project introduces an agentic, LLM-based debate assistant, designed to func
 - [🔍 Observability \& Evaluation](#-observability--evaluation)
   - [Setup](#setup)
   - [Usage](#usage)
-- [Agentic 立论](#agentic-立论)
+  - [Deep Preparation Agent](#deep-preparation-agent)
+- [🤝 Contributing](#-contributing)
 - [🗺️ Roadmap](#️-roadmap)
+- [📚 Legacy Approaches](#-legacy-approaches)
 
 ## 🚀 Getting Started
 This project uses `poetry` to manage dependencies
@@ -50,8 +52,10 @@ source .venv/bin/activate
 
 This project uses pre-commit hooks to ensure code quality and consistency. The following checks are enabled:
 
-- **Code Formatting**: `black` and `isort` for automatic Python code formatting
-- **Code Quality**: `ruff` for fast, modern linting
+- **Code Formatting**: `ruff-format` for automatic Python code formatting
+- **Linting**: `ruff` for fast, modern linting with auto-fix
+- **Type Checking**: `mypy` for static type analysis
+- **Security**: `detect-secrets` for preventing accidental credential commits
 - **File Hygiene**: trailing whitespace removal, end-of-file fixer, YAML validation, and large file detection
 
 ### Running Checks Manually
@@ -77,17 +81,14 @@ pre-commit install
 Alternatively, you can run the individual tools directly using Poetry:
 
 ```bash
-# Format code with black
-poetry run black .
-
-# Sort imports with isort
-poetry run isort .
+# Format code with ruff
+poetry run ruff format .
 
 # Lint and auto-fix code with ruff
 poetry run ruff check --fix .
 
-# Format docstrings with docformatter
-poetry run docformatter --in-place --recursive .
+# Type check with mypy
+poetry run mypy src/
 ```
 
 ---
@@ -197,14 +198,194 @@ How to use traces/spans for evaluation:
 
 ![Opik Logging Example](asset/logging_example.png)
 
+### Prompt Management
+
+This project uses [Opik's Prompt Library](https://www.comet.com/docs/opik/tracing/log_traces#logging-prompts) for centralized prompt management and versioning. Prompts are stored in Opik and loaded at runtime via the `PromptManager` service.
+
+**Benefits:**
+- **Version Control**: Track prompt changes and rollback if needed
+- **Collaboration**: Share prompts across team members via Opik UI
+- **Experimentation**: A/B test different prompt variations
+- **Hot Updates**: Update prompts without redeploying code
+
+**How it works:**
+
+1. **Initialize the prompt manager** with Opik client:
+
+```python
+import opik
+from llm_debate_assistant.services.prompt_manager import get_prompt_manager
+
+client = opik.Opik()
+pm = get_prompt_manager()
+await pm.init(client)  # Loads prompts from Opik into cache
+```
+
+2. **Use prompts in your operations** (example from [define_terms.py](src/llm_debate_assistant/agents/deep_preparation/segments/topic_research/operations/define_terms.py)):
+
+```python
+pm = get_prompt_manager()
+prompt = pm.get("KEY_TERMS_PROMPT").format(topic=topic, side=our_side)
+
+llm = get_llm(temperature=0.3)
+result = await llm.ainvoke(prompt, config)
+```
+
+**Managed prompts** (from [prompts.py](src/llm_debate_assistant/agents/deep_preparation/segments/topic_research/prompts.py)):
+- `KEY_TERMS_PROMPT` - Strategic term definitions aligned with debate side
+- `CORE_CLAIMS_PROMPT` - Core argument claims analysis
+- `ARGUMENT_DEVELOPMENT_PROMPT` - Argument construction framework
+- `VALUE_ADVOCACY_PROMPT` - Value-based advocacy reasoning
+- `COMPARATIVE_ANALYSIS_PROMPT` - Cross-side comparison
+- `EVIDENCE_EXTRACTION_PROMPT` - Evidence retrieval and analysis
+
+The `PromptManager` caches prompts in memory after loading from Opik, providing fast access during runtime while maintaining centralized version control.
+
 ---
-## Agentic Opening Statement Generation
 
-This project uses **LangGraph** to implement an autonomous opening statement generator based on the **Reflection Pattern**. The system can independently generate, evaluate, and refine debate opening statements until they meet competitive standards.
+### Deep Preparation Agent
 
-### Workflow Overview
+The Deep Preparation system uses a **ReAct-style orchestrator** that autonomously manages debate preparation by invoking specialized subgraphs as tools.
 
-![Opening Statement Workflow](asset/opening_statement_workflow.png)
+**Architecture:**
+
+- **Orchestrator Agent**: LLM-powered decision maker that determines which preparation steps to execute
+- **Subgraph Tools**: Complete workflows wrapped as LangChain tools
+  - `run_topic_research`: Research both sides, define key terms, identify strategic advantages
+  - `run_constructive_speech`: Generate opening statement with evidence search and critique loop
+  - `update_todo`: Track preparation progress with a managed task list
+- **Modes**:
+  - `lite` - Topic research only (faster, ~3-5 min)
+  - `full` - Research + constructive speech (~10 min, more segments coming)
+
+![Deep Prep Agent Graph](asset/deep_prep_agent_graph.png)
+
+The graph above shows the ReAct-style orchestration pattern. The agent uses a think-act-observe loop where it reasons about what to do next, invokes the appropriate subgraph tool, and observes the result before continuing.
+
+**How It Works:**
+
+1. Agent receives the debate topic and side (正方/反方)
+2. Creates a todo list with all required preparation tasks
+3. Calls tools sequentially (research must complete before speech)
+4. Each tool executes its own multi-step subgraph internally
+5. Agent tracks progress and provides a final summary
+
+**Tool Wrapping Pattern:**
+
+Subgraphs are wrapped as tools using `@tool` decorator:
+```python
+@tool
+async def run_topic_research(topic: str, side: Literal["正方", "反方"]) -> str:
+    graph = create_topic_research_graph()
+    app = graph.compile()
+    final_state = await app.ainvoke(initial_state, config)
+    return "✅ Research completed: [summary]"
+```
+
+The orchestrator uses LangGraph's `ToolNode` and `tools_condition` for the ReAct loop.
+
+**Subgraph Deep Dive:**
+
+Each subgraph implements a specialized workflow for a specific preparation task. Here's how the key subgraphs work:
+
+*Topic Research Subgraph:*
+
+![Topic Research Graph](asset/topic_research_graph.png)
+
+This subgraph performs comprehensive topic analysis:
+1. Researches both affirmative and negative positions
+2. Defines key terms and establishes comparison criteria
+3. Identifies strategic advantages for your side
+4. Uses parallel research to explore multiple angles simultaneously
+
+*Constructive Speech Subgraph:*
+
+![Constructive Speech Graph](asset/constructive_speech_graph.png)
+
+This subgraph generates a complete opening statement through an iterative refinement process:
+1. Creates initial outline based on research
+2. Searches for supporting evidence using web search
+3. Drafts the statement with evidence integration
+4. Critiques and evaluates the draft quality
+5. Refines through multiple iterations until quality threshold is met
+
+Both subgraphs demonstrate common agentic patterns:
+- **Parallel execution** for concurrent research tasks
+- **Iterative refinement** with critique loops
+- **Tool integration** (web search, structured output generation)
+- **State management** to track progress and accumulate context
+
+**Work in Progress:**
+
+Additional segments under development:
+- Rebuttal preparation（反驳，反反驳）
+- Tactical exchange (自由辩, 质询) planning
+- Closing statement（结辩）
+
+See [`examples/orchestrator_example.py`](examples/orchestrator_example.py) for a complete example.
+
+---
+
+## 🤝 Contributing
+
+**Code Quality:**
+- Type hints required
+- Run `pre-commit run --all-files` before committing
+- Follow existing patterns in the codebase
+- If mypy is blocking your commit with type errors you can't resolve, use `git commit --no-verify` to bypass hooks temporarily
+
+**AI Coding Tools:**
+AI assistants (Claude, Cursor, etc.) are welcome! Just make sure:
+- Review and understand what you're committing
+- Keep it simple and focused
+- No AI slop (over-engineered, unnecessary abstractions, bloated code)
+
+When in doubt: **less is more**.
+
+**Model-Specific Best Practices:**
+- **Gemini Models**: Use the LCEL chain pattern `prompt | llm | parser` instead of `.with_structured_output()` to prevent serialization errors
+  ```python
+  # ✅ Recommended for Gemini
+  chain = prompt | llm | parser
+  result = await chain.ainvoke(input)
+
+  # ❌ Avoid - may cause errors with Gemini
+  structured_llm = llm.with_structured_output(Schema)
+  result = await structured_llm.ainvoke(input)
+  ```
+
+---
+
+## 🗺️ Roadmap
+
+**Infrastructure & Integrations:**
+- LiteLLM adapter for multi-provider support
+- 3rd party search tools (Exa, Tavily) vs LLM-based search comparison
+- Extend `Filesystem` service with cloud storage integration (S3, GCS, etc.)
+- Deployment strategies
+
+**Model & Tool Evaluation:**
+- Benchmark different LLM capabilities for Chinese debate tasks
+- Comparative analysis of search tools for evidence retrieval
+- Performance optimization (latency, cost, quality trade-offs)
+
+**Workflow Enhancements:**
+- Additional debate segments (rebuttal, tactical exchange, closing statement)
+- Workflow refinement for existing segments (topic research, constructive speech)
+- Balance autonomy vs determinism in workflows (agent flexibility vs reliability/cost)
+
+---
+
+## 📚 Legacy Approaches
+
+<details>
+<summary><b>Simple Reflection Pattern</b> (Legacy - click to expand)</summary>
+
+> **Note:** This is a legacy implementation. For new projects, use the [Deep Preparation Agent](#deep-preparation-agent) instead.
+
+For simpler use cases, the **Reflection Pattern** workflow provides a deterministic node-based approach.
+
+![Reflection Pattern Workflow](asset/reflection_pattern.png)
 
 The system employs an iterative refinement process with the following core nodes:
 
@@ -213,12 +394,12 @@ The system employs an iterative refinement process with the following core nodes
    - Includes keyword definitions, comparison standards, and three main arguments
 
 2. **Search Evidence (search_evidence)**
-   - Uses Google Search + Gemini to concurrently search for supporting evidence for each argument
+   - Uses Google Search + Gemini to concurrently search for supporting evidence
    - Prioritizes authoritative sources, statistical data, and empirical cases
 
 3. **Draft Statement (draft_statement)**
    - Generates complete opening statement based on outline and evidence
-   - Ensures compliance with word limit (1200 characters) and conversational style requirements
+   - Ensures compliance with word limit (1200 characters) and conversational style
 
 4. **Evaluate Statement (evaluate_statement)**
    - LLM evaluator assesses statement quality
@@ -233,35 +414,19 @@ The system employs an iterative refinement process with the following core nodes
    - Makes targeted improvements based on feedback
    - Can invoke web search to supplement evidence
 
-### Feedback-Driven Intelligent Refinement
+**Feedback-Driven Refinement:**
 
 The system's core strength lies in **feedback awareness**:
-
 - The evaluation node not only judges pass/fail but also provides specific improvement suggestions
 - This feedback is automatically passed to the next generation node
 - Whether redoing the outline, re-searching evidence, or rewriting the statement, the LLM references previous feedback
 
-**Example**:
-```python
-# Evaluation feedback: "论点二缺少具体数据支持，需要查找关于远程工作对生产力影响的量化研究"
-# (Argument 2 lacks concrete data support, need to find quantitative research on remote work's impact on productivity)
-
-# When routing to search_evidence, the search query automatically includes:
-"""
-【评审反馈】
-论点二缺少具体数据支持，需要查找关于远程工作对生产力影响的量化研究
-
-请根据以上反馈，寻找更合适的证据。
-"""
-```
-
-### Iteration Control
-
+**Iteration Control:**
 - `iteration_count` starts at 1 and increments after each evaluation
 - `max_iterations` controls maximum number of evaluations (e.g., set to 3 for up to 3 evaluations)
 - Flexible improvement strategy through conditional routing
 
-### Running the Example
+**Running the Example:**
 
 ```bash
 python examples/simple_opening_statement_workflow.py
@@ -272,8 +437,4 @@ For complete implementation, see:
 - Node implementation: [`src/llm_debate_assistant/agents/reflection_pattern/nodes.py`](src/llm_debate_assistant/agents/reflection_pattern/nodes.py)
 - Example runner: [`examples/simple_opening_statement_workflow.py`](examples/simple_opening_statement_workflow.py)
 
----
-
-## 🗺️ Roadmap
-- litellm adapter
-- Agents & other design patterns
+</details>

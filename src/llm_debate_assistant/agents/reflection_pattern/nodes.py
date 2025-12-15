@@ -2,42 +2,16 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
-from langchain_google_genai import ChatGoogleGenerativeAI
-
-from llm_debate_assistant.config import app_config
 from llm_debate_assistant.prompts import opening_statement_prompts
-from llm_debate_assistant.tools.web_search import search_multiple_arguments
+from llm_debate_assistant.services.llm import get_llm
+from llm_debate_assistant.services.web_search import search_multiple_arguments  # type: ignore[attr-defined]
 
 from .schema import DebateOutline, Evaluation, OpeningStatement
 from .state import DebateState
 
-# Naive implementation - just use one model for everything
-DEFAULT_MODEL = "gemini-2.5-pro"
-
-
-# Helper function to get LLM instance
-# Can be refined to return different models based on task
-def get_llm(temperature: float = 0.0) -> ChatGoogleGenerativeAI:
-    """Get a configured Gemini LLM instance.
-
-    Args:
-        temperature (float, optional): Sampling temperature.
-        Defaults to 0.0.
-
-    Returns:
-        ChatGoogleGenerativeAI: Configured Gemini LLM instance.
-    """
-    return ChatGoogleGenerativeAI(
-        model=DEFAULT_MODEL,
-        api_key=app_config.api_keys.gemini_api_key,
-        temperature=temperature,
-    )
-
 
 # LLM call Node
-async def create_outline_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def create_outline_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Create debate outline with definitions, standards, and arguments.
 
     Args:
@@ -56,11 +30,11 @@ async def create_outline_node(
     )
 
     # Add feedback if redoing outline
-    if state.get("evaluation") and state["evaluation"].get("feedback"):
-        feedback = state["evaluation"]["feedback"]
-        prompt += f"\n\n【评审反馈】\n{feedback}\n\n请根据以上反馈重新设计大纲。"
+    # if state.get("evaluation") and state["evaluation"].get("feedback"):
+    #     feedback = state["evaluation"]["feedback"]
+    #     prompt += f"\n\n【评审反馈】\n{feedback}\n\n请根据以上反馈重新设计大纲。"
 
-    llm = get_llm(temperature=0.0)
+    llm = get_llm(temperature=0.7)
     structured_llm = llm.with_structured_output(DebateOutline)
 
     try:
@@ -78,17 +52,11 @@ async def create_outline_node(
             "messages": [SystemMessage(content=message)],
         }
     except Exception as e:
-        raise RuntimeError(
-            f"Failed to create outline: {e}\n"
-            f"Model: {DEFAULT_MODEL}\n"
-            f"Topic: {state['topic']}"
-        ) from e
+        raise RuntimeError(f"Failed to create outline: {e}\nTopic: {state['topic']}") from e
 
 
 # Tool Node: Model has been pre-configured in the search function
-async def search_evidence_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def search_evidence_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Search for evidence supporting debate arguments.
 
     Args:
@@ -99,17 +67,19 @@ async def search_evidence_node(
         dict[str, Any]: Updated state with evidence data
     """
     outline = state["outline"]
+    if outline is None:
+        raise ValueError("Outline is required for evidence search")
+
     arguments = outline["arguments"]
 
     # Prepare search arguments
-    search_args = [
-        (arg["claim"], arg["warrant"], arg["evidence_needed"]) for arg in arguments
-    ]
+    search_args = [(arg["claim"], arg["warrant"], arg["evidence_needed"]) for arg in arguments]
 
     # Check if there's feedback from evaluation (when redoing evidence)
     feedback = None
-    if state.get("evaluation") and state["evaluation"].get("feedback"):
-        feedback = state["evaluation"]["feedback"]
+    evaluation = state.get("evaluation")
+    if evaluation and evaluation.get("feedback"):
+        feedback = evaluation["feedback"]
 
     # Use thread-based concurrent search (seems faster + more reliable?)
     evidence_results = await search_multiple_arguments(
@@ -146,9 +116,7 @@ async def search_evidence_node(
 
 
 # Another LLM call Node
-async def draft_statement_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def draft_statement_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Draft opening statement using evidence.
 
     Args:
@@ -159,19 +127,18 @@ async def draft_statement_node(
         dict[str, Any]: Updated state with draft
     """
     outline = state["outline"]
-    evidence_data = state.get("evidence_data", [])
+    if outline is None:
+        raise ValueError("Outline is required for drafting statement")
+
+    evidence_data = state.get("evidence_data") or []
 
     # Build context with evidence
     debate_outline_parts = ["## 关键词定义"]
     for kw in outline["keyword_definitions"]:
         debate_outline_parts.append(f"- {kw['keyword']}: {kw['definition']}")
 
-    debate_outline_parts.append(
-        f"\n## 比较标准\n{outline['comparison_standard']['standard']}"
-    )
-    debate_outline_parts.append(
-        f"理由: {outline['comparison_standard']['justification']}\n"
-    )
+    debate_outline_parts.append(f"\n## 比较标准\n{outline['comparison_standard']['standard']}")
+    debate_outline_parts.append(f"理由: {outline['comparison_standard']['justification']}\n")
 
     debate_outline_parts.append("## 论点与证据\n")
 
@@ -198,8 +165,9 @@ async def draft_statement_node(
     )
 
     # Add feedback if redoing draft
-    if state.get("evaluation") and state["evaluation"].get("feedback"):
-        feedback = state["evaluation"]["feedback"]
+    evaluation = state.get("evaluation")
+    if evaluation and evaluation.get("feedback"):
+        feedback = evaluation["feedback"]
         prompt += f"\n\n【评审反馈】\n{feedback}\n\n请根据以上反馈重新撰写立论稿。"
 
     # Higher temp for creativity
@@ -217,9 +185,7 @@ async def draft_statement_node(
     }
 
 
-async def evaluate_statement_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def evaluate_statement_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Evaluate opening statement quality.
 
     Args:
@@ -230,16 +196,17 @@ async def evaluate_statement_node(
         dict[str, Any]: Updated state with evaluation
     """
     outline = state["outline"]
-    evidence_data = state.get("evidence_data", [])
+    if outline is None:
+        raise ValueError("Outline is required for evaluation")
+
+    evidence_data = state.get("evidence_data") or []
 
     # Build compact outline for evaluation
     debate_outline_parts = ["## 关键词定义"]
     for kw in outline["keyword_definitions"]:
         debate_outline_parts.append(f"- {kw['keyword']}: {kw['definition']}")
 
-    debate_outline_parts.append(
-        f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n"
-    )
+    debate_outline_parts.append(f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n")
 
     debate_outline_parts.append("## 论点框架")
     for i, arg in enumerate(outline["arguments"], 1):
@@ -292,16 +259,13 @@ async def evaluate_statement_node(
         "iteration_count": iteration + 1,  # Increment after each evaluation
         "messages": [
             SystemMessage(
-                content=f"📊 Evaluation (iteration {iteration}): "
-                f"{evaluation.evaluation_result}"
+                content=f"📊 Evaluation (iteration {iteration}): {evaluation.evaluation_result}"
             )
         ],
     }
 
 
-async def improve_statement_node(
-    state: DebateState, config: RunnableConfig
-) -> dict[str, Any]:
+async def improve_statement_node(state: DebateState, config: RunnableConfig) -> dict[str, Any]:
     """Improve opening statement based on evaluation feedback.
 
     Args:
@@ -312,17 +276,22 @@ async def improve_statement_node(
         dict[str, Any]: Updated state with evaluation
     """
     outline = state["outline"]
-    evidence_data = state.get("evidence_data", [])
-    feedback = state["evaluation"]["feedback"]
+    if outline is None:
+        raise ValueError("Outline is required for improvement")
+
+    evaluation = state["evaluation"]
+    if evaluation is None:
+        raise ValueError("Evaluation is required for improvement")
+
+    evidence_data = state.get("evidence_data") or []
+    feedback = evaluation["feedback"]
 
     # Build context with all available evidence
     debate_outline_parts = ["## 关键词定义"]
     for kw in outline["keyword_definitions"]:
         debate_outline_parts.append(f"- {kw['keyword']}: {kw['definition']}")
 
-    debate_outline_parts.append(
-        f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n"
-    )
+    debate_outline_parts.append(f"\n## 比较标准\n{outline['comparison_standard']['standard']}\n")
 
     debate_outline_parts.append("## 论点与完整证据\n")
 
@@ -357,8 +326,6 @@ async def improve_statement_node(
     return {
         "draft": improved_draft.content,
         "messages": [
-            SystemMessage(
-                content=f"🔄 Improved draft ({improved_draft.word_count} words)"
-            )
+            SystemMessage(content=f"🔄 Improved draft ({improved_draft.word_count} words)")
         ],
     }

@@ -28,9 +28,7 @@ class DebateState(TypedDict):
     max_iterations: int
 
     # Redo control (optional - for manual intervention)
-    next_action: Optional[
-        str
-    ]  # "auto" | "redo_outline" | "redo_evidence" | "redo_draft"
+    next_action: Optional[str]  # "auto" | "redo_outline" | "redo_evidence" | "redo_draft"
 
     # Message history for LangGraph
     messages: Annotated[list[BaseMessage], add_messages]

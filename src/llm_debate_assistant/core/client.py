@@ -21,9 +21,7 @@ def get_client() -> OpenAI:
             project=app_config.api_keys.project_key,
         )
         # Wrap with Opik tracking after initialization
-        _openai_client = track_openai(
-            _openai_client, project_name="llm-debate-assistant"
-        )
+        _openai_client = track_openai(_openai_client, project_name="llm-debate-assistant")
     return _openai_client
 
 
@@ -57,6 +55,35 @@ def get_async_gemini_client() -> genai.Client:
             http_options=http_options,
         )
     return _gemini_async_client
+
+
+async def close_async_clients():
+    """Close all async client sessions to prevent resource warnings.
+
+    Call this function before your application exits to properly cleanup
+    async resources like aiohttp sessions.
+
+    Example:
+        >>> import asyncio
+        >>> from llm_debate_assistant.core.client import close_async_clients
+        >>>
+        >>> async def main():
+        >>>     # Your application code
+        >>>     ...
+        >>>     # Cleanup before exit
+        >>>     await close_async_clients()
+        >>>
+        >>> asyncio.run(main())
+    """
+    global _gemini_async_client
+    if _gemini_async_client is not None:
+        # Close the async client to clean up aiohttp sessions
+        # Note: close() is a sync method, not async
+        close_result = _gemini_async_client.close()
+        # If close() returns an awaitable, await it
+        if close_result is not None:
+            await close_result
+        _gemini_async_client = None
 
 
 # For backward compatibility

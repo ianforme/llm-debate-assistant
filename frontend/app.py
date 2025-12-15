@@ -152,17 +152,13 @@ def _render_evidence_card(card):
         if keypoints:
             if isinstance(keypoints, str):
                 keypoints = [keypoints]
-            st.markdown(
-                "\n".join([f"- {_esc(k)}" for k in keypoints if str(k).strip()])
-            )
+            st.markdown("\n".join([f"- {_esc(k)}" for k in keypoints if str(k).strip()]))
 
         if original:
             if isinstance(original, str):
                 original = [original]
             with st.expander("查看原文摘录"):
-                st.markdown(
-                    "\n".join([f"- {_esc(og)}" for og in original if str(og).strip()])
-                )
+                st.markdown("\n".join([f"- {_esc(og)}" for og in original if str(og).strip()]))
 
 
 def _render_outline_side(opening_statement_obj, outline_obj):
@@ -179,9 +175,7 @@ def _render_outline_side(opening_statement_obj, outline_obj):
             if isinstance(defs, dict):
                 defs = [defs]
             for d in defs:
-                st.markdown(
-                    f"- **{_esc(_get(d,'keyword'))}** — {_esc(_get(d,'definition'))}"
-                )
+                st.markdown(f"- **{_esc(_get(d, 'keyword'))}** — {_esc(_get(d, 'definition'))}")
 
         # ## 比较标准
         st.markdown("### 1.2 比较标准")
@@ -297,9 +291,7 @@ with prep_tab:
             value="死刑应该/不应该被废除",
             placeholder="死刑应该/不应该被废除",
         )
-        side = st.pills(
-            "**持方**", ["正方", "反方"], selection_mode="single", default="正方"
-        )
+        side = st.pills("**持方**", ["正方", "反方"], selection_mode="single", default="正方")
         style_card = st.pills(
             "**语言风格**",
             ["六侠-gemini", "小霸王-gemini"],
@@ -347,9 +339,7 @@ with evidence_search_tab:
             value="台湾应废除私人移工中介制度",
             placeholder="台湾应废除私人移工中介制度",
         )
-        side = st.pills(
-            "**持方**", ["正方", "反方"], selection_mode="single", default="正方"
-        )
+        side = st.pills("**持方**", ["正方", "反方"], selection_mode="single", default="正方")
         evidence_needed = st.text_area("**所需资料描述**")
         argument = st.text_area("**论点（选填）**")
         warrant = st.text_area("**论证（选填）**")
@@ -403,9 +393,7 @@ with oregon_interrogation_tab:
                 language="text",
             )
 
-        ore_interrogation_status_area = _status_box(
-            "奥瑞冈质询状态", "oregon_interrogation_logs"
-        )
+        ore_interrogation_status_area = _status_box("奥瑞冈质询状态", "oregon_interrogation_logs")
 
         with st.spinner():
             result = orchestrator.oregon_interrogation_practice(
