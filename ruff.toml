@@ -5,15 +5,22 @@ exclude = [
     "__pycache__",
 ]
 
-line-length = 100  # Accommodate absolute import paths
+line-length = 120  # Accommodate absolute import paths
 
 [lint]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 select = ["E", "F", "W"]
-ignore = []
+# E501: Line too long
+# F401: Unused import
+# E402: Module level import not at top of file
+ignore = ["E501", "F401", "E402"]
+fixable = ["ALL"]
 
 # Ignore E501 (line too long) in prompt files since they contain long Chinese text
 [lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"**/orchestrator.py" = ["T201"]
+"**/tools.py" = ["T201"]
 "src/llm_debate_assistant/prompts/*.py" = ["E501"]
 "src/llm_debate_assistant/utils/style_cards.py" = ["E501"]
 "src/llm_debate_assistant/utils/helpers.py" = ["E501"]

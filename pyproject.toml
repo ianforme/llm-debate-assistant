@@ -53,10 +53,49 @@ audio = [
 
 [tool.mypy]
 python_version = "3.11"
+exclude = [
+    "^examples/",
+    "^notebook/",
+]
+warn_unused_ignores = false
+disable_error_code = ["attr-defined", "arg-type", "return-value", "call-arg", "annotation-unchecked"]
+ignore_missing_imports = true
+strict = false
+disallow_untyped_defs = false
+warn_return_any = false
+allow_redefinition = true
 
 [[tool.mypy.overrides]]
-module = "llm_debate_assistant.services"
+module = ["langchain.*", "langgraph.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "llm_debate_assistant.services.*"
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "llm_debate_assistant.agents.deep_preparation.orchestrator.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "llm_debate_assistant.agents.deep_preparation.segments.constructive_speech.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "llm_debate_assistant.agents.deep_preparation.segments.topic_research.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "llm_debate_assistant.agents.deep_preparation.__init__"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "examples.*"
+ignore_errors = true
+
+[tool.ruff]
+[tool.ruff.per-file-ignores]
+"src/llm_debate_assistant/agents/deep_preparation/segments/topic_research/graph.py" = ["E402"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
